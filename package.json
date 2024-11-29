@@ -1,0 +1,37 @@
+{
+  "name": "cinema-scraper",
+  "version": "1.0.0",
+  "description": "singapore cinema scraper",
+  "main": "scrape.js",
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "lint": "eslint src/",
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
+    "scrape": "node src/scrape.js",
+    "transform": "node src/transform.js",
+    "storage": "node src/storage.js",
+    "metadata": "node src/metadata.js",
+    "split": "node src/split.js",
+    "post": "npm run transform && npm run metadata && npm run split",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.19.1",
+    "chromedriver": "^128.0.1",
+    "dotenv": "^16.4.5",
+    "mocha": "^10.2.0",
+    "selenium-webdriver": "^4.24.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.1",
+    "eslint": "^9.9.1",
+    "globals": "^15.9.0",
+    "prettier": "^3.3.3",
+    "prisma": "^5.19.1",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.4.0"
+  }
+}
