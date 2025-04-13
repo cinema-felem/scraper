@@ -23,7 +23,9 @@ export const lookupMovies = async (): Promise<
   // Process each movie sequentially instead of in parallel
   for (const movie of movies) {
     if (movie.tmdbId) {
-      const storedTMDBMovie: PrismaTMDB = await retrieveTMDB(movie.tmdbId)
+      const storedTMDBMovie: PrismaTMDB | null = await retrieveTMDB(
+        movie.tmdbId,
+      )
       if (storedTMDBMovie?.updatedAt) {
         const updatedAt = new Date(storedTMDBMovie.updatedAt).getTime()
         const currentTime = new Date().getTime()
@@ -75,6 +77,7 @@ export const fetchAndEnrichMovie = async (
 
   if (!apiMovie) {
     logger.warn(`No API data found for ${movie.title}`)
+    return null
   }
 
   if (!apiMovie.ratings) {
@@ -82,10 +85,9 @@ export const fetchAndEnrichMovie = async (
   }
 
   // Get ratings from different sources
-  const imdbId = apiMovie.external_ids.imdb_id
-  const tmdbId = apiMovie.external_ids.tmdb_id || String(movie.tmdbId)
+  const imdbId = apiMovie.external_ids?.imdb_id
+  const tmdbId = apiMovie.external_ids?.tmdb_id || String(movie.tmdbId)
 
-  // Fetch Trakt ratings
   if (imdbId) {
     try {
       logger.info(`Fetching Trakt ratings for ${movie.title}`)

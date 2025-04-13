@@ -10,8 +10,7 @@ import { GVCinema, GVCinemaShowtime, GVMovies } from './types'
 import { uniqByKeepFirst } from './utils'
 
 export const fetchShowtimes = async (): Promise<GVCinemaShowtime[]> => {
-  const days = 1
-  //   const days = 7
+  const days = 7
   const queryDate = new Date()
   queryDate.setHours(0, 0, 0, 0)
   let showtimes: GVCinemaShowtime[] = []

@@ -207,7 +207,7 @@ export const lookupMovieOnTMDB = async ({
   tmdbId,
 }: {
   filmTitle?: string
-  tmdbId?: number
+  tmdbId?: number | null
 }): Promise<ProcessedMovie | null> => {
   try {
     if (!tmdbId) {
