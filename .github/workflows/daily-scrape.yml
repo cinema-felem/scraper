@@ -13,18 +13,18 @@ jobs:
     name: Scrape, Transform and Store Cinema Data
     runs-on: ubuntu-latest
     timeout-minutes: 45 # Set overall job timeout to 45 minutes
-    environment: supabase
+    environment: production
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
       GMAP_API_KEY: ${{ secrets.GMAP_API_KEY }}
-      MAPBOX_API_KEY: ${{ secrets.MAPBOX_API_KEY }}
       TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
       TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
       OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
     steps:
       - name: Checkout code
