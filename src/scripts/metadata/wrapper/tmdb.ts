@@ -206,11 +206,12 @@ export const lookupMovieOnTMDB = async ({
   filmTitle,
   tmdbId,
 }: {
-  filmTitle?: string
+  filmTitle: string
   tmdbId?: number | null
 }): Promise<ProcessedMovie | null> => {
   try {
     if (!tmdbId) {
+      if (!filmTitle) return null
       const searchResults = await searchMovieOnTMDB(filmTitle)
       if (searchResults.length === 0) {
         console.log(`No TMDB search results found for "${filmTitle}"`)
@@ -226,7 +227,7 @@ export const lookupMovieOnTMDB = async ({
     const sgStreaming = getMovieStreaming(tmdbMovie)
     const videos = topNTMDBVideoResults(tmdbMovie)
     const completeMovie: ProcessedMovie = {
-      filmTitle: filmTitle,
+      filmTitle: filmTitle ?? ,
       title: tmdbMovie.title,
       original_title: tmdbMovie.original_title,
       original_language: tmdbMovie.original_language,
