@@ -49,7 +49,10 @@ async function processMovieMetadata(): Promise<void> {
     logger.info('Processing movie metadata...');
     
     // Create a span for fetching movie metadata
-    const lookupSpan = transaction.startChild('lookup_movies');
+    const lookupSpan = transaction.startChild({
+      op: 'lookup_movies',
+      description: 'Fetch and process movie metadata'
+    });
     let movies = [];
     try {
       // Log the start of the movie lookup process
@@ -78,7 +81,10 @@ async function processMovieMetadata(): Promise<void> {
     }
     
     // Create a span for writing movie metadata to file
-    const writeSpan = transaction.startChild('write_movie_metadata');
+    const writeSpan = transaction.startChild({
+      op: 'write_movie_metadata',
+      description: 'Write movie metadata to file'
+    });
     try {
       const movieOutput = JSON.stringify({ movies }, null, 2);
       const outputPath = path.join('data/metadata', 'movies.json');
@@ -123,7 +129,10 @@ async function processCinemaMetadata(): Promise<void> {
     logger.info('Processing cinema metadata...');
     
     // Create a span for contextualizing cinemas
-    const contextualizeSpan = transaction.startChild('contextualize_cinemas');
+    const contextualizeSpan = transaction.startChild({
+      op: 'contextualize_cinemas',
+      description: 'Enrich cinemas with location data'
+    });
     try {
       // Log the start of the cinema contextualization process
       logger.addBreadcrumb('metadata', 'Starting cinema contextualization');

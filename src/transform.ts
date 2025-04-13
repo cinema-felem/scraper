@@ -103,12 +103,14 @@ async function processAllCinemaChains(): Promise<void> {
     });
     
     for (const cinemaChain of cinemaChains) {
-      // Create a child span for this cinema chain
-      const chainSpan = transaction.startChild(`transform_${cinemaChain}`);
+      logger.info(`Processing transform for ${cinemaChain}`);
       
       try {
         // Import the standardization module for this cinema chain
-        const importSpan = chainSpan.startChild(`import_module_${cinemaChain}`);
+        const importSpan = transaction.startChild({
+          op: `import_module_${cinemaChain}`,
+          description: `Import transform module for ${cinemaChain}`
+        });
         let standardiseCinemaChain;
         try {
           const module = require(path.join('../dist/scripts/transform/', cinemaChain));
@@ -122,7 +124,10 @@ async function processAllCinemaChains(): Promise<void> {
         }
 
         // Read raw data
-        const readSpan = chainSpan.startChild(`read_raw_data_${cinemaChain}`);
+        const readSpan = transaction.startChild({
+          op: `read_raw_data_${cinemaChain}`,
+          description: `Read raw data for ${cinemaChain}`
+        });
         let cinemaChainObject;
         try {
           const rawDataPath = path.join('data/raw', `${cinemaChain}.json`);
@@ -150,7 +155,10 @@ async function processAllCinemaChains(): Promise<void> {
         }
 
         // Standardize the data
-        const standardizeSpan = chainSpan.startChild(`standardize_${cinemaChain}`);
+        const standardizeSpan = transaction.startChild({
+          op: `standardize_${cinemaChain}`,
+          description: `Standardize data for ${cinemaChain}`
+        });
         let standardizedData;
         try {
           standardizedData = standardiseCinemaChain(cinemaChainObject);
@@ -175,7 +183,10 @@ async function processAllCinemaChains(): Promise<void> {
         }
 
         // Write intermediate data
-        const writeSpan = chainSpan.startChild(`write_intermediate_${cinemaChain}`);
+        const writeSpan = transaction.startChild({
+          op: `write_intermediate_${cinemaChain}`,
+          description: `Write intermediate data for ${cinemaChain}`
+        });
         try {
           const outputPath = path.join('data/intermediate', `${cinemaChain}.json`);
           const output = JSON.stringify(standardizedData, null, 2);
@@ -193,7 +204,10 @@ async function processAllCinemaChains(): Promise<void> {
         }
 
         // Merge with existing data
-        const mergeSpan = chainSpan.startChild(`merge_${cinemaChain}`);
+        const mergeSpan = transaction.startChild({
+          op: `merge_${cinemaChain}`,
+          description: `Merge data for ${cinemaChain}`
+        });
         try {
           // Record pre-merge counts
           const preMergeMovies = merged.movies.length;
@@ -227,8 +241,6 @@ async function processAllCinemaChains(): Promise<void> {
         logger.info(`Successfully processed ${cinemaChain} data`);
       } catch (error) {
         logger.error(`Error processing ${cinemaChain}:`, error);
-      } finally {
-        chainSpan.finish();
       }
     }
   } catch (error) {
@@ -324,7 +336,10 @@ async function main(): Promise<void> {
 
     // Only clean and merge data if not in single chain mode
     if (!singleChainMode) {
-      const mergeSpan = mainTransaction.startChild('finalize_merged_data');
+      const mergeSpan = mainTransaction.startChild({
+        op: 'finalize_merged_data',
+        description: 'Finalize and write merged data'
+      });
       try {
         // Log pre-cleaning metrics
         logger.trackDataCounts({

@@ -105,7 +105,10 @@ async function applyUpdates(): Promise<void> {
     logger.info('Starting database update operations');
     
     // Remove orphaned movies with tracing
-    const orphanedSpan = transaction.startChild('remove_orphaned_movies');
+    const orphanedSpan = transaction.startChild({
+      op: 'remove_orphaned_movies',
+      description: 'Remove orphaned movies from database'
+    });
     try {
       logger.addBreadcrumb('storage_updates', 'Removing orphaned movies');
       const result = await removeOrphanedMovies() as unknown as UpdateOperationResult;
@@ -130,7 +133,10 @@ async function applyUpdates(): Promise<void> {
     }
     
     // Execute other database updates with tracing
-    const updatesSpan = transaction.startChild('execute_updates');
+    const updatesSpan = transaction.startChild({
+      op: 'execute_updates',
+      description: 'Execute database updates'
+    });
     try {
       logger.addBreadcrumb('storage_updates', 'Executing database updates');
       const updateResults = await executeUpdates() as unknown as UpdateOperationResult;
@@ -191,7 +197,10 @@ async function main(): Promise<void> {
 
     // Process each step sequentially to avoid database conflicts
     if (steps.includes('cinemas')) {
-      const cinemaSpan = mainTransaction.startChild('insert_cinemas');
+      const cinemaSpan = mainTransaction.startChild({
+        op: 'insert_cinemas',
+        description: 'Insert cinemas into database'
+      });
       try {
         logger.info('Inserting cinemas...');
         
@@ -227,7 +236,10 @@ async function main(): Promise<void> {
     }
 
     if (steps.includes('movies')) {
-      const movieSpan = mainTransaction.startChild('insert_movies');
+      const movieSpan = mainTransaction.startChild({
+        op: 'insert_movies',
+        description: 'Insert movies into database'
+      });
       try {
         logger.info('Inserting movies...');
         
@@ -264,7 +276,10 @@ async function main(): Promise<void> {
     }
 
     if (steps.includes('showtimes')) {
-      const showtimeSpan = mainTransaction.startChild('insert_showtimes');
+      const showtimeSpan = mainTransaction.startChild({
+        op: 'insert_showtimes',
+        description: 'Insert showtimes into database'
+      });
       try {
         logger.info('Inserting showtimes...');
         
