@@ -227,7 +227,7 @@ export const lookupMovieOnTMDB = async ({
     const sgStreaming = getMovieStreaming(tmdbMovie)
     const videos = topNTMDBVideoResults(tmdbMovie)
     const completeMovie: ProcessedMovie = {
-      filmTitle: filmTitle ?? ,
+      filmTitle,
       title: tmdbMovie.title,
       original_title: tmdbMovie.original_title,
       original_language: tmdbMovie.original_language,
@@ -245,7 +245,7 @@ export const lookupMovieOnTMDB = async ({
       ratings: [
         {
           source: 'The Movie Database',
-          rating: tmdbMovie.vote_average,
+          rating: tmdbMovie.vote_average ?? 0,
           votes: tmdbMovie.vote_count,
         },
       ],
