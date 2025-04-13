@@ -1,0 +1,106 @@
+name: Daily Cinema Data Scrape
+
+on:
+  schedule:
+    # Run at 4am every day (Singapore time, GMT+8) which is 8pm UTC
+    - cron: '0 20 * * *'
+
+  # Allow manual triggering of the workflow
+  workflow_dispatch:
+
+jobs:
+  scrape-transform-store:
+    name: Scrape, Transform and Store Cinema Data
+    runs-on: ubuntu-latest
+    timeout-minutes: 45 # Set overall job timeout to 45 minutes
+    environment: supabase
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      GMAP_API_KEY: ${{ secrets.GMAP_API_KEY }}
+      MAPBOX_API_KEY: ${{ secrets.MAPBOX_API_KEY }}
+      TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+      TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+      OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+      TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chrome for Selenium
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Clean up Chrome temp directories
+        run: |
+          mkdir -p temp/chrome-data
+          rm -rf temp/chrome-data/*
+          echo "Chrome temporary directories cleaned up"
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+        timeout-minutes: 10
+
+      - name: Build TypeScript
+        run: npm run build
+        timeout-minutes: 10
+
+      - name: Scrape cinemas
+        run: npm run scrape
+        continue-on-error: false
+        timeout-minutes: 45
+
+      - name: Transform data
+        run: npm run transform
+        continue-on-error: false
+
+      - name: Store data in database
+        run: npm run storage
+        continue-on-error: false
+
+      - name: Enrich with metadata
+        run: npm run metadata
+        continue-on-error: false
+        timeout-minutes: 30
+
+      - name: Clean up Chrome temp directories
+        if: always()
+        run: |
+          rm -rf temp/chrome-data/*
+          echo "Chrome temporary directories cleaned up"
+
+      - name: Upload raw data as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-cinema-data
+          path: data/raw/
+          retention-days: 7
+
+      - name: Upload processed data as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-cinema-data
+          path: data/intermediate/
+          retention-days: 7
+
+      - name: Upload metadata as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinema-metadata
+          path: data/metadata/
+          retention-days: 7

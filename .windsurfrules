@@ -1,0 +1,296 @@
+# Cinema Scraper Project Windsurfrules
+# Version: 1.1.0
+# Purpose: Define project standards, conventions, and AI assistance guidelines
+# Last Updated: 2025-04-12
+
+# ==============================
+# 1. Project Structure
+# ==============================
+structure:
+  root_files:
+    required:
+      - package.json        # Node.js project manifest
+      - tsconfig.json       # TypeScript configuration
+      - .env.example        # Environment variables template
+      - README.md           # Project documentation
+      - eslint.config.mjs   # ESLint configuration
+      - windsurfrules       # Project standards definition
+    
+  directories:
+    src:
+      structure:
+        - scripts/         # Main scraping logic
+          - scrape/       # Cinema-specific scrapers
+          - transform/    # Data transformation
+          - storage/      # Database operations
+          - metadata/     # External API integrations
+        - text/          # Text processing utilities
+        - types/         # Shared type definitions
+    
+    prisma:              # Database schema and migrations
+      required:
+        - schema.prisma
+        - migrations/
+
+# ==============================
+# 2. Code Standards
+# ==============================
+code_standards:
+  language:
+    typescript:
+      strict: true
+      target: "ES2022"
+      module: "CommonJS"
+      
+  style:
+    indentation: 2
+    quotes: "single"
+    semicolons: true
+    max_line_length: 100
+    
+  naming:
+    files:
+      pattern: "kebab-case"
+      examples:
+        - "movie-scraper.ts"
+        - "gv-transformer.ts"
+    
+    variables:
+      pattern: "camelCase"
+      examples:
+        - "movieTitle"
+        - "showTimes"
+    
+    interfaces:
+      prefix: "I"
+      pattern: "PascalCase"
+      examples:
+        - "IMovie"
+        - "IShowtime"
+    
+    types:
+      pattern: "PascalCase"
+      examples:
+        - "MovieData"
+        - "CinemaLocation"
+        
+  imports:
+    preferred:
+      - Use ES module imports (import) over CommonJS (require)
+      - Import specific functions/classes rather than entire modules
+      - Group imports by source (standard library, external, internal)
+    
+  async:
+    preferred:
+      - Use async/await over Promise chains
+      - Proper error handling with try/catch blocks
+      - Avoid nested callbacks
+      - Use Promise.all for parallel operations
+
+# ==============================
+# 3. Documentation
+# ==============================
+documentation:
+  required_sections:
+    readme:
+      - Project Overview
+      - Setup Instructions
+      - Environment Variables
+      - Available Scripts
+      - Architecture
+    
+    code:
+      - File Purpose
+      - Function Documentation
+      - Type Definitions
+      - Error Handling
+  
+  jsdoc:
+    required_tags:
+      - "@param"
+      - "@returns"
+      - "@throws"
+    example: |
+      /**
+       * Scrapes movie showtimes from a cinema website
+       * @param {string} cinemaId - Unique identifier for the cinema
+       * @param {Date} date - Target date for showtimes
+       * @returns {Promise<IShowtime[]>} List of showtimes
+       * @throws {ScraperError} When scraping fails
+       */
+
+# ==============================
+# 4. Error Handling
+# ==============================
+error_handling:
+  required:
+    - Custom error classes for different failure types
+    - Error logging with Sentry
+    - Graceful fallbacks for API failures
+    - Rate limiting handling
+    - Comprehensive try/catch blocks
+    - Informative error messages
+  
+  error_classes:
+    - ScraperError
+    - TransformError
+    - StorageError
+    - APIError
+  
+  sentry:
+    required:
+      - Initialize in entry point files
+      - Capture exceptions with context
+      - Set appropriate sample rates
+      - Include user-friendly error messages
+
+# ==============================
+# 5. Testing
+# ==============================
+testing:
+  frameworks:
+    - mocha
+  
+  coverage:
+    minimum: 70
+    critical_paths: 90
+  
+  required_tests:
+    - Scraper functionality
+    - Data transformation
+    - Database operations
+    - API integration
+    - Error handling
+    - Type validation
+
+# ==============================
+# 6. AI Assistant Interaction
+# ==============================
+ai_interaction:
+  confirmation_required:
+    - Database schema changes
+    - New API integrations
+    - Security-related changes
+    - Performance-critical changes
+  
+  auto_approved:
+    - Documentation updates
+    - Type definition changes
+    - Test additions
+    - Code formatting
+    - Error handling improvements
+  
+  presentation:
+    code_changes:
+      - Show before/after diff
+      - Explain rationale
+      - List affected files
+    
+    options:
+      - Present multiple approaches when applicable
+      - Include pros/cons
+      - Recommend best option
+    
+    error_handling:
+      - Explain error cause
+      - Suggest fixes
+      - Provide example solution
+
+# ==============================
+# 7. Dependencies
+# ==============================
+dependencies:
+  required:
+    runtime:
+      "@prisma/client": "^6.3.0"
+      "selenium-webdriver": "^4.28.1"
+      "@sentry/node": "^8.53.0"
+      "@sentry/profiling-node": "^8.53.0"
+      "natural": "^8.0.1"
+      "dotenv": "^16.4.5"
+    
+    development:
+      "typescript": "^5.5.4"
+      "eslint": "^9.9.1"
+      "prettier": "^3.3.3"
+      "prisma": "^6.3.0"
+
+# ==============================
+# 8. File Patterns
+# ==============================
+patterns:
+  ignore:
+    - .git/
+    - node_modules/
+    - dist/
+    - .env
+    - .DS_Store
+    - package-lock.json
+  
+  include:
+    - "src/**/*.ts"
+    - "prisma/**/*.prisma"
+    - "*.json"
+    - "*.md"
+    - ".env.example"
+
+# ==============================
+# 9. Security
+# ==============================
+security:
+  required:
+    - Environment variables for sensitive data
+    - Rate limiting for external APIs
+    - Input validation
+    - Error message sanitization
+  
+  env_vars:
+    required:
+      - DATABASE_URL
+      - TMDB_API_KEY
+      - OMDB_API_KEY
+      - SENTRY_DSN
+      - GMAP_API_KEY
+
+# ==============================
+# 10. Type System
+# ==============================
+type_system:
+  organization:
+    - Centralized type definitions in src/types/
+    - Consistent naming conventions
+    - Proper documentation
+  
+  required_types:
+    - Standard data structures (Movie, Cinema, Showtime)
+    - API responses and requests
+    - Error types
+    - Configuration options
+  
+  best_practices:
+    - Use interfaces for object shapes
+    - Use type for unions, intersections, and aliases
+    - Avoid any except when absolutely necessary
+    - Use generics for reusable components
+    - Include proper JSDoc comments for complex types
+
+# ==============================
+# 11. Code Organization
+# ==============================
+code_organization:
+  file_structure:
+    - One responsibility per file
+    - Group related functionality
+    - Clear separation of concerns
+  
+  function_design:
+    - Small, focused functions (< 30 lines)
+    - Clear input/output contracts
+    - Minimize side effects
+    - Proper error handling
+  
+  main_pattern:
+    - Entry point files should use async main() function
+    - Centralized error handling
+    - Clean separation of configuration and execution
+    - Proper logging throughout execution

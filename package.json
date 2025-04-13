@@ -1,0 +1,48 @@
+{
+  "name": "cinema-scraper",
+  "version": "1.0.0",
+  "description": "singapore cinema scraper",
+  "main": "scrape.js",
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc && npm run sentry:sourcemaps",
+    "lint": "eslint src/",
+    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
+    "scrape": "npm run build && node dist/scrape.js",
+    "transform": "npm run build && node dist/transform.js",
+    "storage": "npm run build && node dist/storage.js",
+    "metadata": "npm run build && node dist/metadata.js",
+    "split": "npm run build && node dist/split.js",
+    "post": "npm run transform && npm run metadata && npm run split",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org puayhiang --project felem-scraper ./dist && sentry-cli sourcemaps upload --org puayhiang --project felem-scraper ./dist"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.3.0",
+    "@sentry/cli": "^2.43.0",
+    "@sentry/node": "^8.53.0",
+    "@sentry/profiling-node": "^8.53.0",
+    "chromedriver": "^135.0.0",
+    "dotenv": "^16.4.5",
+    "mocha": "^10.2.0",
+    "natural": "^8.0.1",
+    "selenium-webdriver": "^4.28.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.1",
+    "@types/natural": "^5.1.5",
+    "@types/node": "^22.13.0",
+    "@types/selenium-webdriver": "^4.1.28",
+    "eslint": "^9.9.1",
+    "globals": "^15.9.0",
+    "prettier": "^3.3.3",
+    "prisma": "^6.3.0",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.4.0"
+  }
+}
