@@ -44,10 +44,10 @@ async function processMovieMetadata(): Promise<void> {
     'metadata',
     { source: 'movies' }
   );
-  
+
   try {
     logger.info('Processing movie metadata...');
-    
+
     // Create a span for fetching movie metadata
     const lookupSpan = transaction.startChild({
       op: 'lookup_movies',
@@ -57,10 +57,10 @@ async function processMovieMetadata(): Promise<void> {
     try {
       // Log the start of the movie lookup process
       logger.addBreadcrumb('metadata', 'Starting movie metadata lookup');
-      
+
       // Fetch movie metadata
       movies = await lookupMovies();
-      
+
       // Log metrics about the movie metadata
       logger.trackDataCounts({
         stage: 'metadata_movies_fetched',
@@ -79,7 +79,7 @@ async function processMovieMetadata(): Promise<void> {
     } finally {
       lookupSpan.finish();
     }
-    
+
     // Create a span for writing movie metadata to file
     const writeSpan = transaction.startChild({
       op: 'write_movie_metadata',
@@ -89,7 +89,7 @@ async function processMovieMetadata(): Promise<void> {
       const movieOutput = JSON.stringify({ movies }, null, 2);
       const outputPath = path.join('data/metadata', 'movies.json');
       await fs.writeFile(outputPath, movieOutput, 'utf8');
-      
+
       // Log file write operation
       logger.addBreadcrumb('file_operation', 'Wrote movie metadata to file', {
         path: outputPath,
@@ -102,7 +102,7 @@ async function processMovieMetadata(): Promise<void> {
     } finally {
       writeSpan.finish();
     }
-    
+
     // Log successful completion
     logger.info(`Successfully processed metadata for ${movies.length} movies`);
   } catch (error) {
@@ -124,71 +124,27 @@ async function processCinemaMetadata(): Promise<void> {
     'metadata',
     { source: 'cinemas' }
   );
-  
+
   try {
     logger.info('Processing cinema metadata...');
-    
+
     // Create a span for contextualizing cinemas
     const contextualizeSpan = transaction.startChild({
       op: 'contextualize_cinemas',
       description: 'Enrich cinemas with location data'
     });
     try {
-      // Log the start of the cinema contextualization process
-      logger.addBreadcrumb('metadata', 'Starting cinema contextualization');
-      
-      // Get the original cinema count to compare after contextualization
-      let cinemaCount = 0;
-      try {
-        const intermediateDataPath = path.join('data/intermediate', 'merge.json');
-        const dataStr = await fs.readFile(intermediateDataPath, 'utf8');
-        const data = JSON.parse(dataStr);
-        cinemaCount = data.cinemas?.length || 0;
-        
-        // Log initial cinema count
-        logger.trackDataCounts({
-          stage: 'metadata_cinemas_input',
-          cinemaCount,
-          source: 'merge_file'
-        });
-      } catch (error) {
-        logger.error('Error reading intermediate cinema data:', error);
-        // Continue with process even if we can't read the original count
-      }
-      
+
       // Contextualize cinemas (enrich with location data)
       await contextualiseCinema();
-      
-      // Try to read the results to log metrics
-      try {
-        const metadataPath = path.join('data/metadata', 'cinemas.json');
-        const metadataStr = await fs.readFile(metadataPath, 'utf8');
-        const metadata = JSON.parse(metadataStr);
-        const enrichedCount = metadata.cinemas?.length || 0;
-        
-        // Log metrics about the cinema metadata
-        logger.trackDataCounts({
-          stage: 'metadata_cinemas_enriched',
-          cinemaCount: enrichedCount,
-          source: 'external_apis',
-          details: {
-            cinemasWithCoordinates: metadata.cinemas?.filter((c: any) => c.lat && c.lng).length || 0,
-            cinemasWithAddress: metadata.cinemas?.filter((c: any) => c.address).length || 0,
-            originalCount: cinemaCount,
-            enrichmentRate: ((enrichedCount / cinemaCount) * 100).toFixed(2) + '%'
-          }
-        });
-      } catch (error) {
-        logger.error('Error reading enriched cinema metadata:', error);
-        // Don't throw here, as the main contextualization might have still succeeded
-      }
+
     } catch (error) {
       logger.error('Error contextualizing cinemas:', error);
       throw error;
     } finally {
       contextualizeSpan.finish();
     }
-    
+
     // Log successful completion
     logger.info('Successfully processed cinema metadata');
   } catch (error) {
@@ -204,7 +160,7 @@ async function processCinemaMetadata(): Promise<void> {
  */
 function getUniqueSources(movies: any[]): Record<string, number> {
   const sources: Record<string, number> = {};
-  
+
   try {
     for (const movie of movies) {
       if (movie.ratings && Array.isArray(movie.ratings)) {
@@ -221,7 +177,7 @@ function getUniqueSources(movies: any[]): Record<string, number> {
   } catch (e) {
     logger.error('Error extracting rating sources:', e);
   }
-  
+
   return sources;
 }
 
@@ -235,7 +191,7 @@ async function main(): Promise<void> {
     'metadata',
     { pid: process.pid }
   );
-  
+
   try {
     // Determine which steps to run based on command line arguments
     const steps: MetadataStep[] = process.argv[2]
@@ -243,7 +199,7 @@ async function main(): Promise<void> {
       : ['cinemas', 'movies'];
 
     logger.info(`Starting metadata process with steps: ${steps.join(', ')}`);
-    
+
     // Log configuration information
     logger.addBreadcrumb('metadata_config', 'Metadata processing configuration', {
       steps,
