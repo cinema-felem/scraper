@@ -259,7 +259,7 @@ const mapMovies = (input: ProjectorRawMovie[]): StandardMovie[] => {
 
 type TransformedShowtime = ProjectorRawShowtime & {
   cinema?: CinemaScreenDetails
-  movie: MappedMovies
+  movie: StandardMovie // Changed MappedMovies to StandardMovie
 }
 
 const transformShowtimes = (
@@ -267,26 +267,32 @@ const transformShowtimes = (
   cinemaArray: StandardCinema[],
   showtimeArray: ProjectorRawShowtime[],
 ): TransformedShowtime[] => {
-  const transformedShowtimes = showtimeArray.flatMap(showtime => {
-    const { ScreenId, FilmId } = showtime
-    const cinema = getCinemaScreenDetails(cinemaArray, ScreenId)
-    const movie = moviesArray.find(item => item.id === `projector:${FilmId}`)
-    if (!cinema) {
-      console.log(`cinemaId ${ScreenId} not found`)
-    }
-    if (!movie) {
-      console.log(`filmCd ${FilmId} not found`)
-    }
-    if (!cinema || !movie) {
-      return []
-    }
-    return {
-      cinema,
-      movie,
-      ...showtime,
-    } //showtime.cinema && showtime.movie ? showtime : []
-  })
-  return transformedShowtimes
+  const transformedShowtimesArray = showtimeArray.flatMap(
+    (showtime: ProjectorRawShowtime): TransformedShowtime[] => {
+      const { ScreenId, FilmId } = showtime
+      const cinema = getCinemaScreenDetails(cinemaArray, ScreenId)
+      const movie = moviesArray.find(item => item.id === `projector:${FilmId}`)
+
+      if (!cinema) {
+        console.log(`cinemaId ${ScreenId} not found for Projector showtime`)
+      }
+      if (!movie) {
+        console.log(`filmId ${FilmId} not found for Projector showtime`)
+      }
+      if (!cinema || !movie) {
+        return [] // Filter out this showtime if essential info is missing
+      }
+
+      // Construct the TransformedShowtime object
+      const transformedShowtimeObject: TransformedShowtime = {
+        cinema,
+        movie,
+        ...showtime,
+      }
+      return [transformedShowtimeObject] // Return as a single-element array for flatMap
+    },
+  )
+  return transformedShowtimesArray
 }
 
 type CinemaScreenDetails = {
@@ -455,8 +461,48 @@ const mapShowtimes = (
       filmTitle: filmfilmTitle,
       language: filmlanguage,
       format: filmformat,
-      source: filmSource,
+      source: filmSource, // This is StandardMovie['source'] which has details: Record<string, any>
     } = movie
+
+    // Define an interface for the expected structure of movie.source.details for Projector movies
+    // This mirrors the structure previously implicitly defined by MappedMovies['source']['details']
+    interface ProjectorStandardMovieDetails {
+      url: string
+      subtitle: string[]
+      GovernmentFilmTitle?: string
+      FilmPosterUrl: string
+      FilmPosterThumbnailUrl: string
+      BackdropImageUrl: string
+      FilmTrailerUrl?: string // Was string in MappedMovies, ensure consistency
+      Attributes: void[]
+      IsRestricted: boolean
+      People: Person[]
+      Id: string // From movieDetail.Id
+      Title: string // From movieDetail.Title
+      ShortName: string
+      Synopsis: string
+      Genre: string
+      SignageText: string
+      Distributor: string
+      OpeningDate: string
+      Rating: string // From movieDetail.Rating
+      Status: string
+      Content: string
+      Duration: number
+      DisplaySequence: number
+      NationalCode?: string // Was string in MappedMovies, ensure consistency
+      // Note: Format is at movie.format, not in details if following StandardMovie structure correctly
+      releasingSchedules: string[]
+      eventTypes: string[]
+      order: number
+      coverImage: string
+      description: string // This was top-level in ProjectorRawMovie, now in details
+      rating: string // This was top-level in ProjectorRawMovie (movie.rating), now in details
+      categories: string[]
+      themes: Theme[]
+    }
+
+    const details = movie.source.details as ProjectorStandardMovieDetails
 
     const {
       url: filmURL,
@@ -491,7 +537,7 @@ const mapShowtimes = (
       rating: filmrating,
       categories: filmcategories,
       themes: filmthemes,
-    } = filmSource.details
+    } = details // Use the casted 'details'
     const unixTime = new Date(`${SalesCutOffTime}+08:00`).getTime()
     let ticketType = {
       label: 'Special',

@@ -31,29 +31,39 @@ export interface GVCinemaShowtime {
   }
 }
 
+/**
+ * Represents a raw timeslot object as found in GV's API before transformation.
+ */
+export interface GVRawTimeslot {
+  showDate: string
+  time12: string
+  time24: string
+  soldPercent: number
+  hall: string
+  concessionAllow: boolean
+  increasedCapacity: {
+    increasedCapacity: boolean
+    promptMessage: string
+  }
+}
+
+/**
+ * Represents a movie's showtime information within a cinema's data from GV's API.
+ */
+export interface GVCinemaMovieShowtime {
+  filmCd: string
+  filmTitle: string
+  rating: string
+  ratingImgUrl: string
+  consumerAdvice: string
+  priorityBkgFlg: boolean
+  subTitles: string[]
+  times: GVRawTimeslot[]
+}
+
 export interface RawCinemaShowtime {
   id: string
-  movies: {
-    filmCd: string
-    filmTitle: string
-    rating: string
-    ratingImgUrl: string
-    consumerAdvice: string
-    priorityBkgFlg: boolean
-    subTitles: string[]
-    times: {
-      showDate: string
-      time12: string
-      time24: string
-      soldPercent: number
-      hall: string
-      concessionAllow: boolean
-      increasedCapacity: {
-        increasedCapacity: boolean
-        promptMessage: string
-      }
-    }[]
-  }[]
+  movies: GVCinemaMovieShowtime[]
 }
 
 export interface GVMovies {

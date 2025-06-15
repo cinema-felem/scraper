@@ -32,12 +32,12 @@ const originalConsole = {
  * Data count metrics interface for tracking the number of records at different stages
  */
 export interface DataCountMetrics {
-  stage: string;
-  movieCount?: number;
-  cinemaCount?: number;
-  showtimeCount?: number;
-  source?: string;
-  details?: Record<string, any>;
+  stage: string
+  movieCount?: number
+  cinemaCount?: number
+  showtimeCount?: number
+  source?: string
+  details?: Record<string, any>
 }
 
 class Logger {
@@ -115,8 +115,9 @@ class Logger {
    */
   trackDataCounts(metrics: DataCountMetrics): void {
     try {
-      const { stage, movieCount, cinemaCount, showtimeCount, source, details } = metrics;
-      
+      const { stage, movieCount, cinemaCount, showtimeCount, source, details } =
+        metrics
+
       // Add a breadcrumb for data count tracking
       Sentry.addBreadcrumb({
         category: 'data-flow',
@@ -128,32 +129,37 @@ class Logger {
           cinemaCount,
           showtimeCount,
           source,
-          timestamp: new Date().toISOString()
-        }
-      });
-      
+          timestamp: new Date().toISOString(),
+        },
+      })
+
       // Also log to console
       const countInfo = [
         movieCount !== undefined ? `${movieCount} movies` : '',
         cinemaCount !== undefined ? `${cinemaCount} cinemas` : '',
-        showtimeCount !== undefined ? `${showtimeCount} showtimes` : ''
-      ].filter(Boolean).join(', ');
-      
-      const sourceInfo = source ? ` from ${source}` : '';
-      originalConsole.info(`[${stage}] Processing ${countInfo}${sourceInfo}`);
-      
+        showtimeCount !== undefined ? `${showtimeCount} showtimes` : '',
+      ]
+        .filter(Boolean)
+        .join(', ')
+
+      const sourceInfo = source ? ` from ${source}` : ''
+      originalConsole.info(`[${stage}] Processing ${countInfo}${sourceInfo}`)
+
       // Set metrics in Sentry
-      if (movieCount !== undefined) Sentry.setTag(`${stage}.movie_count`, movieCount);
-      if (cinemaCount !== undefined) Sentry.setTag(`${stage}.cinema_count`, cinemaCount);
-      if (showtimeCount !== undefined) Sentry.setTag(`${stage}.showtime_count`, showtimeCount);
-      if (source) Sentry.setTag(`${stage}.source`, source);
-      
+      if (movieCount !== undefined)
+        Sentry.setTag(`${stage}.movie_count`, movieCount)
+      if (cinemaCount !== undefined)
+        Sentry.setTag(`${stage}.cinema_count`, cinemaCount)
+      if (showtimeCount !== undefined)
+        Sentry.setTag(`${stage}.showtime_count`, showtimeCount)
+      if (source) Sentry.setTag(`${stage}.source`, source)
+
       // Include additional details if provided
       if (details) {
-        Sentry.setContext(`${stage}_details`, details);
+        Sentry.setContext(`${stage}_details`, details)
       }
     } catch (err) {
-      originalConsole.error('Error tracking data counts:', err);
+      originalConsole.error('Error tracking data counts:', err)
     }
   }
 
@@ -164,24 +170,28 @@ class Logger {
    * @param {Record<string, any>} metadata - Additional metadata for the transaction
    * @returns {object} The created transaction
    */
-  startTransaction(name: string, operation: string, metadata: Record<string, any> = {}): any {
+  startTransaction(
+    name: string,
+    operation: string,
+    metadata: Record<string, any> = {},
+  ): any {
     try {
       // Create a transaction tag for future events
       try {
-        const scope = Sentry.getCurrentHub().getScope();
+        const scope = Sentry.getCurrentHub().getScope()
         if (scope) {
-          scope.setTag('transaction_name', name);
-          scope.setTag('transaction_op', operation);
-          
+          scope.setTag('transaction_name', name)
+          scope.setTag('transaction_op', operation)
+
           // Add metadata as context
           if (Object.keys(metadata).length > 0) {
-            scope.setContext('transaction_data', metadata);
+            scope.setContext('transaction_data', metadata)
           }
         }
       } catch (err) {
-        originalConsole.error('Error setting transaction scope:', err);
+        originalConsole.error('Error setting transaction scope:', err)
       }
-      
+
       // Add a breadcrumb for the transaction start
       Sentry.addBreadcrumb({
         category: 'transaction',
@@ -189,19 +199,19 @@ class Logger {
         data: {
           ...metadata,
           operation,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
-        level: 'info'
-      });
-      
+        level: 'info',
+      })
+
       // Return a simple transaction object that can be used to finish the transaction
       return {
         name,
         operation,
         metadata,
         startTime: Date.now(),
-        finish: function() {
-          const duration = Date.now() - this.startTime;
+        finish: function () {
+          const duration = Date.now() - this.startTime
           Sentry.addBreadcrumb({
             category: 'transaction',
             message: `Finished transaction: ${name}`,
@@ -209,13 +219,13 @@ class Logger {
               ...metadata,
               operation,
               duration,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             },
-            level: 'info'
-          });
-          
+            level: 'info',
+          })
+
           // Set duration metric
-          Sentry.setTag(`${name}.duration_ms`, duration);
+          Sentry.setTag(`${name}.duration_ms`, duration)
         },
         startChild: (childName: string) => {
           Sentry.addBreadcrumb({
@@ -224,16 +234,16 @@ class Logger {
             data: {
               parent: name,
               operation,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             },
-            level: 'info'
-          });
-          
-          const childStartTime = Date.now();
+            level: 'info',
+          })
+
+          const childStartTime = Date.now()
           return {
             name: childName,
             finish: () => {
-              const childDuration = Date.now() - childStartTime;
+              const childDuration = Date.now() - childStartTime
               Sentry.addBreadcrumb({
                 category: 'span',
                 message: `Finished span: ${childName}`,
@@ -241,24 +251,24 @@ class Logger {
                   parent: name,
                   operation,
                   duration: childDuration,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
                 },
-                level: 'info'
-              });
-              
+                level: 'info',
+              })
+
               // Set span duration metric
-              Sentry.setTag(`${name}.${childName}_duration_ms`, childDuration);
-            }
-          };
-        }
-      };
+              Sentry.setTag(`${name}.${childName}_duration_ms`, childDuration)
+            },
+          }
+        },
+      }
     } catch (err) {
-      originalConsole.error('Error starting transaction:', err);
+      originalConsole.error('Error starting transaction:', err)
       // Return a dummy transaction to prevent errors
       return {
         finish: () => {},
         startChild: () => ({ finish: () => {} }),
-      } as any;
+      } as any
     }
   }
 
@@ -268,16 +278,20 @@ class Logger {
    * @param {string} message - Breadcrumb message
    * @param {Record<string, any>} data - Additional data
    */
-  addBreadcrumb(category: string, message: string, data: Record<string, any> = {}): void {
+  addBreadcrumb(
+    category: string,
+    message: string,
+    data: Record<string, any> = {},
+  ): void {
     try {
       Sentry.addBreadcrumb({
         category,
         message,
         data,
-        level: 'info'
-      });
+        level: 'info',
+      })
     } catch (err) {
-      originalConsole.error('Error adding breadcrumb:', err);
+      originalConsole.error('Error adding breadcrumb:', err)
     }
   }
 
@@ -292,7 +306,7 @@ class Logger {
     // Only send to Sentry if it's initialized
     if (process.env.SENTRY_DSN) {
       try {
-        let context: Record<string, any> = {};
+        let context: Record<string, any> = {}
 
         // Process arguments to make them serializable
         if (args.length > 0) {
@@ -368,15 +382,15 @@ export function initSentry(options: Record<string, any> = {}): void {
 
   try {
     // Get environment from ENV or default to development
-    const environment = process.env.NODE_ENV || 'development';
-    
+    const environment = process.env.NODE_ENV || 'development'
+
     // Get release version from package.json if available
-    let release;
+    let release
     try {
       // In production, this would typically be set by the build process
-      release = process.env.SENTRY_RELEASE || 'cinema-scraper@1.0.0';
+      release = process.env.SENTRY_RELEASE || 'cinema-scraper@1.0.0'
     } catch (e) {
-      release = 'cinema-scraper@unknown';
+      release = 'cinema-scraper@unknown'
     }
 
     Sentry.init({
@@ -392,39 +406,46 @@ export function initSentry(options: Record<string, any> = {}): void {
       // Capture 100% of transactions for monitoring data flow
       tracesSampler: context => {
         // Always sample scraper, transformer, and metadata transactions
-        const transactionName = context.transactionContext?.name || '';
-        if (transactionName.includes('scrape') ||
-            transactionName.includes('transform') ||
-            transactionName.includes('metadata') ||
-            transactionName.includes('storage')) {
-          return 1.0;
+        const transactionName = context.transactionContext?.name || ''
+        if (
+          transactionName.includes('scrape') ||
+          transactionName.includes('transform') ||
+          transactionName.includes('metadata') ||
+          transactionName.includes('storage')
+        ) {
+          return 1.0
         }
         // Default sample rate from options or 20%
-        return options.tracesSampleRate ?? 0.2;
+        return options.tracesSampleRate ?? 0.2
       },
       beforeSend(event) {
         // Add processing stage to all events based on tags
         if (event && event.tags) {
           // Use the transaction tags if available
-          const transactionName = event.tags.transaction_name || 'unknown';
-          const transactionOp = event.tags.transaction_op || 'unknown';
-          
-          event.tags.processing_stage = transactionName;
-          event.tags.operation = transactionOp;
+          const transactionName = event.tags.transaction_name || 'unknown'
+          const transactionOp = event.tags.transaction_op || 'unknown'
+
+          event.tags.processing_stage = transactionName
+          event.tags.operation = transactionOp
         }
-        return event;
+        return event
       },
       ...options,
     })
 
     // Override console methods to funnel through Sentry
     overrideConsole()
-    
+
     // Set some global tags
-    Sentry.setTag('service', options.initialScope?.tags?.service || 'cinema-scraper');
-    Sentry.setTag('process_id', process.pid.toString());
-    
-    originalConsole.info(`Sentry initialized for ${options.initialScope?.tags?.service || 'cinema-scraper'} service`);
+    Sentry.setTag(
+      'service',
+      options.initialScope?.tags?.service || 'cinema-scraper',
+    )
+    Sentry.setTag('process_id', process.pid.toString())
+
+    originalConsole.info(
+      `Sentry initialized for ${options.initialScope?.tags?.service || 'cinema-scraper'} service`,
+    )
   } catch (err) {
     originalConsole.error('Failed to initialize Sentry:', err)
   }

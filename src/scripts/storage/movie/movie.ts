@@ -61,21 +61,25 @@ export const insertMovies = async (movies: StandardMovie[]) => {
 
     // Separate movies into new ones and those that need updates
     const newMovies: MergedMovie[] = []
-    const moviesToUpdate: { id: string; titleVariations: string[]; movieIds: string[] }[] = []
-    
+    const moviesToUpdate: {
+      id: string
+      titleVariations: string[]
+      movieIds: string[]
+    }[] = []
+
     for (const movie of mergedMovies) {
       let existingMovieId: string | null = null
-      
+
       // Check if movie ID already exists
       if (existingMovieMap.has(movie.id)) {
         existingMovieId = movie.id
       }
-      
+
       // Check if movie title already exists
       else if (movie.title && existingTitleMap.has(movie.title.toLowerCase())) {
         existingMovieId = existingTitleMap.get(movie.title.toLowerCase())
       }
-      
+
       // Check if any title variation already exists
       else if (movie.titleVariations && Array.isArray(movie.titleVariations)) {
         for (const variation of movie.titleVariations) {
@@ -85,7 +89,7 @@ export const insertMovies = async (movies: StandardMovie[]) => {
           }
         }
       }
-      
+
       // Check if any movie ID already exists
       if (!existingMovieId && movie.movieIds && Array.isArray(movie.movieIds)) {
         for (const id of movie.movieIds) {
@@ -95,42 +99,46 @@ export const insertMovies = async (movies: StandardMovie[]) => {
           }
         }
       }
-      
+
       // If movie exists, prepare update with new variations and IDs
       if (existingMovieId) {
         const existingMovie = existingMovieMap.get(existingMovieId)
         if (existingMovie) {
           const newTitleVariations: string[] = []
           const newMovieIds: string[] = []
-          
+
           // Add new title variations
           if (movie.titleVariations && Array.isArray(movie.titleVariations)) {
             for (const variation of movie.titleVariations) {
-              if (variation && 
-                  (!existingMovie.titleVariations || 
-                   !existingMovie.titleVariations.includes(variation))) {
+              if (
+                variation &&
+                (!existingMovie.titleVariations ||
+                  !existingMovie.titleVariations.includes(variation))
+              ) {
                 newTitleVariations.push(variation)
               }
             }
           }
-          
+
           // Add new movie IDs
           if (movie.movieIds && Array.isArray(movie.movieIds)) {
             for (const id of movie.movieIds) {
-              if (id && 
-                  (!existingMovie.movieIds || 
-                   !existingMovie.movieIds.includes(id))) {
+              if (
+                id &&
+                (!existingMovie.movieIds ||
+                  !existingMovie.movieIds.includes(id))
+              ) {
                 newMovieIds.push(id)
               }
             }
           }
-          
+
           // Only update if there are new variations or IDs
           if (newTitleVariations.length > 0 || newMovieIds.length > 0) {
             moviesToUpdate.push({
               id: existingMovieId,
               titleVariations: newTitleVariations,
-              movieIds: newMovieIds
+              movieIds: newMovieIds,
             })
           }
         }
@@ -139,7 +147,7 @@ export const insertMovies = async (movies: StandardMovie[]) => {
         newMovies.push({
           ...movie,
           titleVariations: movie.titleVariations || [],
-          movieIds: movie.movieIds || []
+          movieIds: movie.movieIds || [],
         })
       }
     }
@@ -156,39 +164,41 @@ export const insertMovies = async (movies: StandardMovie[]) => {
       })
       console.log(`Successfully inserted ${newMovies.length} new movies`)
     }
-    
+
     // Update existing movies with new title variations and movie IDs
     if (moviesToUpdate.length > 0) {
       let updatedCount = 0
-      
+
       for (const movieUpdate of moviesToUpdate) {
         const existingMovie = existingMovieMap.get(movieUpdate.id)
         if (existingMovie) {
           // Prepare the update data
           const updatedTitleVariations = [
             ...(existingMovie.titleVariations || []),
-            ...movieUpdate.titleVariations
+            ...movieUpdate.titleVariations,
           ]
-          
+
           const updatedMovieIds = [
             ...(existingMovie.movieIds || []),
-            ...movieUpdate.movieIds
+            ...movieUpdate.movieIds,
           ]
-          
+
           // Update the movie record
           await prisma.movie.update({
             where: { id: movieUpdate.id },
             data: {
               titleVariations: updatedTitleVariations,
               movieIds: updatedMovieIds,
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           })
           updatedCount++
         }
       }
-      
-      console.log(`Successfully updated ${updatedCount} existing movies with new identifiers`)
+
+      console.log(
+        `Successfully updated ${updatedCount} existing movies with new identifiers`,
+      )
     }
 
     console.log('Movie insertion and updates completed successfully')

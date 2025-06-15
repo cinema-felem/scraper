@@ -12,7 +12,7 @@
     "transform": "tsc && node dist/transform.js",
     "storage": "tsc && node dist/storage.js",
     "metadata": "tsc && node dist/metadata.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsc && mocha dist/utils/http-client.test.js dist/scripts/transform/shared.test.js dist/scripts/scrape/gv/transform.test.js dist/scripts/scrape/shaw/index.test.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
@@ -21,26 +21,26 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.3.0",
-    "@sentry/cli": "^2.43.0",
-    "@sentry/node": "^8.53.0",
-    "@sentry/profiling-node": "^8.53.0",
-    "chromedriver": ">=135.0.0",
-    "dotenv": "^16.4.5",
-    "mocha": "^10.2.0",
-    "natural": "^8.0.1",
-    "selenium-webdriver": "^4.28.1"
+    "@prisma/client": "^6.9.0",
+    "@sentry/cli": "^2.46.0",
+    "@sentry/node": "^8.55.0",
+    "@sentry/profiling-node": "^8.55.0",
+    "chromedriver": "^137.0.3",
+    "dotenv": "^16.5.0",
+    "mocha": "^10.8.2",
+    "natural": "^8.1.0",
+    "selenium-webdriver": "^4.33.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.9.1",
-    "@types/natural": "^5.1.5",
-    "@types/node": "^22.13.0",
+    "@eslint/js": "^9.29.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^18.19.111",
     "@types/selenium-webdriver": "^4.1.28",
-    "eslint": "^9.9.1",
-    "globals": "^15.9.0",
-    "prettier": "^3.3.3",
-    "prisma": "^6.3.0",
-    "typescript": "^5.5.4",
-    "typescript-eslint": "^8.4.0"
+    "eslint": "^9.29.0",
+    "globals": "^16.2.0",
+    "prettier": "^3.5.3",
+    "prisma": "^6.9.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.34.0"
   }
 }
