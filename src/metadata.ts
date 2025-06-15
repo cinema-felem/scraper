@@ -42,24 +42,24 @@ async function processMovieMetadata(): Promise<void> {
   const transaction = logger.startTransaction(
     'process_movie_metadata',
     'metadata',
-    { source: 'movies' }
-  );
+    { source: 'movies' },
+  )
 
   try {
-    logger.info('Processing movie metadata...');
+    logger.info('Processing movie metadata...')
 
     // Create a span for fetching movie metadata
     const lookupSpan = transaction.startChild({
       op: 'lookup_movies',
-      description: 'Fetch and process movie metadata'
-    });
-    let movies = [];
+      description: 'Fetch and process movie metadata',
+    })
+    let movies = []
     try {
       // Log the start of the movie lookup process
-      logger.addBreadcrumb('metadata', 'Starting movie metadata lookup');
+      logger.addBreadcrumb('metadata', 'Starting movie metadata lookup')
 
       // Fetch movie metadata
-      movies = await lookupMovies();
+      movies = await lookupMovies()
 
       // Log metrics about the movie metadata
       logger.trackDataCounts({
@@ -67,49 +67,51 @@ async function processMovieMetadata(): Promise<void> {
         movieCount: movies.length,
         source: 'external_apis',
         details: {
-          moviesWithRatings: movies.filter((m: any) => m.ratings && m.ratings.length > 0).length,
+          moviesWithRatings: movies.filter(
+            (m: any) => m.ratings && m.ratings.length > 0,
+          ).length,
           moviesWithPosters: movies.filter((m: any) => m.poster).length,
           moviesWithTMDb: movies.filter((m: any) => m.tmdbId).length,
-          ratingSources: getUniqueSources(movies)
-        }
-      });
+          ratingSources: getUniqueSources(movies),
+        },
+      })
     } catch (error) {
-      logger.error('Error fetching movie metadata:', error);
-      throw error;
+      logger.error('Error fetching movie metadata:', error)
+      throw error
     } finally {
-      lookupSpan.finish();
+      lookupSpan.finish()
     }
 
     // Create a span for writing movie metadata to file
     const writeSpan = transaction.startChild({
       op: 'write_movie_metadata',
-      description: 'Write movie metadata to file'
-    });
+      description: 'Write movie metadata to file',
+    })
     try {
-      const movieOutput = JSON.stringify({ movies }, null, 2);
-      const outputPath = path.join('data/metadata', 'movies.json');
-      await fs.writeFile(outputPath, movieOutput, 'utf8');
+      const movieOutput = JSON.stringify({ movies }, null, 2)
+      const outputPath = path.join('data/metadata', 'movies.json')
+      await fs.writeFile(outputPath, movieOutput, 'utf8')
 
       // Log file write operation
       logger.addBreadcrumb('file_operation', 'Wrote movie metadata to file', {
         path: outputPath,
         size: movieOutput.length,
-        movieCount: movies.length
-      });
+        movieCount: movies.length,
+      })
     } catch (error) {
-      logger.error('Error writing movie metadata to file:', error);
-      throw error;
+      logger.error('Error writing movie metadata to file:', error)
+      throw error
     } finally {
-      writeSpan.finish();
+      writeSpan.finish()
     }
 
     // Log successful completion
-    logger.info(`Successfully processed metadata for ${movies.length} movies`);
+    logger.info(`Successfully processed metadata for ${movies.length} movies`)
   } catch (error) {
-    logger.error('Error processing movie metadata:', error);
-    throw error; // Re-throw to be caught by main error handler
+    logger.error('Error processing movie metadata:', error)
+    throw error // Re-throw to be caught by main error handler
   } finally {
-    transaction.finish();
+    transaction.finish()
   }
 }
 
@@ -122,36 +124,34 @@ async function processCinemaMetadata(): Promise<void> {
   const transaction = logger.startTransaction(
     'process_cinema_metadata',
     'metadata',
-    { source: 'cinemas' }
-  );
+    { source: 'cinemas' },
+  )
 
   try {
-    logger.info('Processing cinema metadata...');
+    logger.info('Processing cinema metadata...')
 
     // Create a span for contextualizing cinemas
     const contextualizeSpan = transaction.startChild({
       op: 'contextualize_cinemas',
-      description: 'Enrich cinemas with location data'
-    });
+      description: 'Enrich cinemas with location data',
+    })
     try {
-
       // Contextualize cinemas (enrich with location data)
-      await contextualiseCinema();
-
+      await contextualiseCinema()
     } catch (error) {
-      logger.error('Error contextualizing cinemas:', error);
-      throw error;
+      logger.error('Error contextualizing cinemas:', error)
+      throw error
     } finally {
-      contextualizeSpan.finish();
+      contextualizeSpan.finish()
     }
 
     // Log successful completion
-    logger.info('Successfully processed cinema metadata');
+    logger.info('Successfully processed cinema metadata')
   } catch (error) {
-    logger.error('Error processing cinema metadata:', error);
-    throw error; // Re-throw to be caught by main error handler
+    logger.error('Error processing cinema metadata:', error)
+    throw error // Re-throw to be caught by main error handler
   } finally {
-    transaction.finish();
+    transaction.finish()
   }
 }
 
@@ -159,7 +159,7 @@ async function processCinemaMetadata(): Promise<void> {
  * Helper function to get unique rating sources from movies
  */
 function getUniqueSources(movies: any[]): Record<string, number> {
-  const sources: Record<string, number> = {};
+  const sources: Record<string, number> = {}
 
   try {
     for (const movie of movies) {
@@ -167,18 +167,18 @@ function getUniqueSources(movies: any[]): Record<string, number> {
         for (const rating of movie.ratings) {
           if (rating.source) {
             if (!sources[rating.source]) {
-              sources[rating.source] = 0;
+              sources[rating.source] = 0
             }
-            sources[rating.source]++;
+            sources[rating.source]++
           }
         }
       }
     }
   } catch (e) {
-    logger.error('Error extracting rating sources:', e);
+    logger.error('Error extracting rating sources:', e)
   }
 
-  return sources;
+  return sources
 }
 
 /**
@@ -186,43 +186,45 @@ function getUniqueSources(movies: any[]): Record<string, number> {
  */
 async function main(): Promise<void> {
   // Create a main transaction for the entire metadata process
-  const mainTransaction = logger.startTransaction(
-    'metadata_main',
-    'metadata',
-    { pid: process.pid }
-  );
+  const mainTransaction = logger.startTransaction('metadata_main', 'metadata', {
+    pid: process.pid,
+  })
 
   try {
     // Determine which steps to run based on command line arguments
     const steps: MetadataStep[] = process.argv[2]
       ? [process.argv[2] as MetadataStep]
-      : ['cinemas', 'movies'];
+      : ['cinemas', 'movies']
 
-    logger.info(`Starting metadata process with steps: ${steps.join(', ')}`);
+    logger.info(`Starting metadata process with steps: ${steps.join(', ')}`)
 
     // Log configuration information
-    logger.addBreadcrumb('metadata_config', 'Metadata processing configuration', {
-      steps,
-      timestamp: new Date().toISOString()
-    });
+    logger.addBreadcrumb(
+      'metadata_config',
+      'Metadata processing configuration',
+      {
+        steps,
+        timestamp: new Date().toISOString(),
+      },
+    )
 
     // Track tasks sequentially to ensure better tracing
     // This allows us to more easily identify where data drops out
     if (steps.includes('movies')) {
-      await processMovieMetadata();
+      await processMovieMetadata()
     }
 
     if (steps.includes('cinemas')) {
-      await processCinemaMetadata();
+      await processCinemaMetadata()
     }
 
-    logger.info('Successfully completed all metadata processing');
+    logger.info('Successfully completed all metadata processing')
   } catch (error) {
-    logger.error('Error in metadata process:', error);
-    Sentry.captureException(error);
-    process.exit(1);
+    logger.error('Error in metadata process:', error)
+    Sentry.captureException(error)
+    process.exit(1)
   } finally {
-    mainTransaction.finish();
+    mainTransaction.finish()
   }
 }
 

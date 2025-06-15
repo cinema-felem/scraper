@@ -66,18 +66,20 @@ export const lookupRatingsOnOMDB = async (
         method: 'GET',
       },
     )
-    
+
     if (!movieRequest.ok) {
-      console.error(`OMDB API request failed with status: ${movieRequest.status}`)
+      console.error(
+        `OMDB API request failed with status: ${movieRequest.status}`,
+      )
       return []
     }
-    
+
     const omdbMovie: OMDBMovie = await movieRequest.json()
-    
+
     if (!omdbMovie || omdbMovie.Response === false) {
       return []
     }
-    
+
     const ratings = normaliseRatings(omdbMovie)
     return ratings
   } catch (error) {
@@ -96,7 +98,7 @@ const normaliseRatings = (omdbMovie: OMDBMovie): MovieRatings[] => {
   if (!omdbMovie || !omdbMovie.Ratings || !Array.isArray(omdbMovie.Ratings)) {
     return []
   }
-  
+
   const ratings = omdbMovie.Ratings
   const normalisedRatings = ratings.map(rating => {
     let votes: number | undefined

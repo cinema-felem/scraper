@@ -48,7 +48,7 @@ export interface MovieShowtimeRaw {
   showTimes: ShowTime[]
 }
 
-interface ShowTime {
+export interface ShowTime {
   performanceId: number
   displayDate: string
   displayTime: string

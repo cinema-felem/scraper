@@ -202,61 +202,72 @@ function parseTo24Hour(time12: string) {
 }
 
 const mapShowtimes = (showtimeArray: TransformedShowtime[]) => {
-  const mappedShowtimeArray = showtimeArray.flatMap(showtime => {
-    const {
-      showDate,
-      time24,
-      time12,
-      hall,
-      cinemaId,
-      filmCd,
-      subTitles: subtitles,
-      soldPercent,
-      movie,
-      cinema,
-      priorityBkgFlg,
-      concessionAllow,
-    } = showtime
-    if (!movie) return []
-    const unixTime = getUnixDate(showDate, time24, time12)
-    if (!unixTime)
-      console.log(
-        `showDate ${showDate} time24 ${time24}  time12 ${time12} not found`,
-      )
-    const id = `${cinemaId}/${filmCd}/${showDate}/${time24}/${hall}`
-    const ticketType = cinema?.source?.details?.type
-    const cinemaParent = cinema?.source?.details?.locationCode
-    const cinemaName = cinema?.name
-    const movieTitle = movie.filmTitle
-    const movieFormat = movie.format
-    const { freeValidity, annualPassValidity, eDealsValidity, mPassMovie } =
-      movie.source.details
-    const filmParent = movie.source.details.formatGroupParentId
-    return {
-      id: `gv:${id}`,
-      cinemaId: `gv:${cinemaParent}`,
-      filmId: `gv:${filmParent}`,
-      unixTime,
-      link: `https://www.gv.com.sg/GVSeatSelection#/cinemaId/${cinemaId}/filmCode/${filmCd}/showDate/${showDate}/showTime/${time24}/hallNumber/${hall}`,
-      ticketType,
-      movieFormat,
-      details: {
-        priorityBooking: priorityBkgFlg,
-        subtitles,
-        soldPercent: `${soldPercent * 10}%`,
+  const mappedShowtimeArray = showtimeArray.flatMap(
+    (showtime: TransformedShowtime): StandardShowtime[] => { // Add types here
+      const {
+        showDate,
+        time24,
+        time12,
         hall,
-        cinemaName,
-        movieTitle,
-        discounts: {
-          concessionAllow,
-          freeValidity,
-          annualPassValidity,
-          eDealsValidity,
-          mPassMovie,
+        cinemaId,
+        filmCd,
+        subTitles: subtitles,
+        soldPercent,
+        movie,
+        cinema,
+        priorityBkgFlg,
+        concessionAllow,
+      } = showtime
+
+      if (!movie || !cinema) { // Ensure both movie and cinema objects exist
+        return []
+      }
+
+      const unixTime = getUnixDate(showDate, time24, time12)
+      if (!unixTime) {
+        console.log(
+          `Unix time calculation failed for GV: showDate ${showDate}, time24 ${time24}, time12 ${time12}`,
+        )
+        return [] // Skip if no valid unixTime
+      }
+
+      const id = `${cinemaId}/${filmCd}/${showDate}/${time24}/${hall}`
+      const ticketType = cinema.source?.details?.type // Access safely
+      const cinemaParent = cinema.source?.details?.locationCode
+      const cinemaName = cinema.name
+      const movieTitle = movie.filmTitle
+      const movieFormat = movie.format
+      const filmParent = movie.source.details.formatGroupParentId
+      const { freeValidity, annualPassValidity, eDealsValidity, mPassMovie } =
+        movie.source.details
+
+      const showtimeObject: StandardShowtime = {
+        id: `gv:${id}`,
+        cinemaId: `gv:${cinemaParent}`,
+        filmId: `gv:${filmParent}`, // Ensure this aligns with how StandardMovie IDs are created/used
+        unixTime,
+        link: `https://www.gv.com.sg/GVSeatSelection#/cinemaId/${cinemaId}/filmCode/${filmCd}/showDate/${showDate}/showTime/${time24}/hallNumber/${hall}`,
+        ticketType,
+        movieFormat,
+        details: {
+          priorityBooking: priorityBkgFlg,
+          subtitles,
+          soldPercent: `${soldPercent * 10}%`, // Assuming soldPercent is 0-10, if it's 0-100, then just soldPercent
+          hall,
+          cinemaName,
+          movieTitle,
+          discounts: {
+            concessionAllow,
+            freeValidity,
+            annualPassValidity,
+            eDealsValidity,
+            mPassMovie,
+          },
         },
-      },
-    }
-  })
+      }
+      return [showtimeObject] // Return as an array for flatMap
+    },
+  )
   return mappedShowtimeArray
 }
 
