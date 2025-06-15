@@ -12,7 +12,7 @@
     "transform": "tsc && node dist/transform.js",
     "storage": "tsc && node dist/storage.js",
     "metadata": "tsc && node dist/metadata.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
@@ -33,13 +33,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@types/jest": "^29.5.14",
     "@types/natural": "^5.1.5",
     "@types/node": "^22.13.0",
     "@types/selenium-webdriver": "^4.1.28",
     "eslint": "^9.9.1",
     "globals": "^15.9.0",
+    "jest": "^30.0.0",
     "prettier": "^3.3.3",
     "prisma": "^6.3.0",
+    "ts-jest": "^29.4.0",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.4.0"
   }

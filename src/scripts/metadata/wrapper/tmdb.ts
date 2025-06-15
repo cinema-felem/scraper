@@ -466,28 +466,64 @@ const getSearchTermDistance = (
 }
 
 // TODO: Check
-const sortTMDBResults = (
+export const sortTMDBResults = (
   movieTitle: string,
   tmdbResults: TMDBSearchResult[],
 ): TMDBSearchResult[] => {
   if (!tmdbResults) return []
+
   const calculateDistance = getSearchTermDistance(movieTitle)
+
+  const now = new Date()
+  const threeMonthsAgo = new Date()
+  threeMonthsAgo.setMonth(now.getMonth() - 3)
+
   const sortedMovies = tmdbResults.sort((a, b) => {
-    const { release_date: a_date, popularity: a_popularity } = a
-    const { release_date: b_date, popularity: b_popularity } = b
-    const b_distance = calculateDistance(b)
+    const { release_date: a_release_date, popularity: a_popularity } = a
+    const { release_date: b_release_date, popularity: b_popularity } = b
+
+    const a_date = a_release_date ? new Date(a_release_date) : null
+    const b_date = b_release_date ? new Date(b_release_date) : null
+
+    const a_isRecent = a_date && a_date >= threeMonthsAgo
+    const b_isRecent = b_date && b_date >= threeMonthsAgo
+
+    if (a_isRecent && !b_isRecent) {
+      return -1 // a comes first
+    }
+    if (b_isRecent && !a_isRecent) {
+      return 1 // b comes first
+    }
+
+    // If both are recent or both are not recent, proceed to secondary sort keys.
+
+    // Secondary Sort Key: Title Similarity (Edit Distance)
     const a_distance = calculateDistance(a)
-    if (Math.abs(a_distance - b_distance) < 5) {
-      const a_unixTime = new Date(a_date).getTime()
-      const b_unixTime = new Date(b_date).getTime()
-      const dateDiffDays =
-        Math.abs(b_unixTime - a_unixTime) / (1000 * 60 * 60 * 24)
-      if (Math.abs(dateDiffDays) < 365) {
+    const b_distance = calculateDistance(b)
+
+    if (a_distance !== b_distance) {
+      return a_distance - b_distance // Lower distance comes first (ascending)
+    }
+
+    // Tertiary Sort Key: Original Popularity/Date Logic
+    // This block is reached if recency is the same AND edit distances are the same.
+    if (a_date && b_date) {
+      const a_unixTime = a_date.getTime()
+      const b_unixTime = b_date.getTime()
+      const dateDiffDays = Math.abs(b_unixTime - a_unixTime) / (1000 * 60 * 60 * 24)
+      if (dateDiffDays < 365) {
+        // If release dates are within a year, sort by popularity
         return b_popularity - a_popularity // descending
       }
+      // Otherwise, sort by release date (more recent first)
       return b_unixTime - a_unixTime // descending
+    } else if (a_date) {
+      return -1 // a has a date, b doesn't, so a comes first
+    } else if (b_date) {
+      return 1 // b has a date, a doesn't, so b comes first
     }
-    return a_distance - b_distance
+    // If neither has a date, sort by popularity
+    return b_popularity - a_popularity // descending
   })
   return sortedMovies
 }
