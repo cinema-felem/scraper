@@ -5,13 +5,13 @@
   "main": "scrape.js",
   "scripts": {
     "dev": "tsc --watch",
-    "build": "tsc && npm run sentry:sourcemaps",
+    "build": "tsc && tsc-alias && npm run sentry:sourcemaps",
     "lint": "eslint src/",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
-    "scrape": "tsc && node dist/scrape.js",
-    "transform": "tsc && node dist/transform.js",
-    "storage": "tsc && node dist/storage.js",
-    "metadata": "tsc && node dist/metadata.js",
+    "scrape": "tsc && tsc-alias && node dist/scrape.js",
+    "transform": "tsc && tsc-alias && node dist/transform.js",
+    "storage": "tsc && tsc-alias && node dist/storage.js",
+    "metadata": "tsc && tsc-alias && node dist/metadata.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
@@ -40,6 +40,7 @@
     "globals": "^15.9.0",
     "prettier": "^3.3.3",
     "prisma": "^6.3.0",
+    "tsc-alias": "^1.8.16",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.4.0"
   }
