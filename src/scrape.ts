@@ -3,7 +3,6 @@ import * as path from 'path'
 import 'chromedriver'
 import { EventEmitter } from 'events'
 import logger, { initSentry, DataCountMetrics } from './utils/logger'
-import * as Cathay from './scripts/scrape/cathay'
 import * as GV from './scripts/scrape/gv'
 import * as Projector from './scripts/scrape/projector'
 import * as Shaw from './scripts/scrape/shaw'
@@ -25,9 +24,8 @@ initSentry({
 /**
  * Define available cinema chains
  */
-type CinemaChain = 'cathay' | 'gv' | 'projector' | 'shaw'
+type CinemaChain = 'gv' | 'projector' | 'shaw'
 const DEFAULT_CINEMA_CHAINS: CinemaChain[] = [
-  'cathay',
   'gv',
   'projector',
   'shaw',
@@ -66,7 +64,6 @@ async function scrapeChain(cinemaChain: CinemaChain): Promise<void> {
 
     // Map cinema chain to the appropriate module
     const scraperModules: Record<CinemaChain, any> = {
-      cathay: Cathay,
       gv: GV,
       projector: Projector,
       shaw: Shaw,
