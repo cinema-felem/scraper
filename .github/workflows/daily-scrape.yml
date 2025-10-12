@@ -46,6 +46,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
+      - name: Setup ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+
       - name: Clean up Chrome temp directories
         run: |
           mkdir -p temp/chrome-data
