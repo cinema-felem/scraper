@@ -1,6 +1,5 @@
 import { promises as fs, mkdirSync } from 'fs'
 import * as path from 'path'
-import 'chromedriver'
 import { EventEmitter } from 'events'
 import logger, { initSentry, DataCountMetrics } from './utils/logger'
 import * as GV from './scripts/scrape/gv'
