@@ -3,7 +3,6 @@ export type StandardMovie = {
   filmTitle: string
   language: string
   format: string
-  // url: string // projector ???
   // chainSpecific: unknown // ??? shaw
   source: {
     chain: string
