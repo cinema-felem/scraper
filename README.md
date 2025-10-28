@@ -27,6 +27,14 @@
    3. If still no results, extracts core title from complex strings
    4. Retries TMDB search with extracted title
 
+   Free models used (with automatic fallback):
+   - deepseek/deepseek-chat-v3-0324:free
+   - qwen/qwen3-235b-a22b:free
+   - google/gemini-2.0-flash-exp:free
+   - meta-llama/llama-3.3-70b-instruct:free
+   - openai/gpt-oss-20b:free
+   - mistralai/mistral-small-3.2-24b-instruct:free
+
    This improves match rates for:
    - Titles with typos or misspellings
    - Abbreviated titles

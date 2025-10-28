@@ -1,5 +1,15 @@
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 
+// Free models to use with OpenRouter (in priority order)
+const FREE_MODELS = [
+  'deepseek/deepseek-chat-v3-0324:free',
+  'qwen/qwen3-235b-a22b:free',
+  'google/gemini-2.0-flash-exp:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'openai/gpt-oss-20b:free',
+  'mistralai/mistral-small-3.2-24b-instruct:free',
+] as const
+
 export interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
@@ -25,6 +35,81 @@ export interface OpenRouterChatResponse {
     completion_tokens: number
     total_tokens: number
   }
+  error?: {
+    code: number
+    message: string
+  }
+}
+
+/**
+ * Makes a request to OpenRouter with automatic fallback to alternative models
+ * @param messages - The chat messages to send
+ * @param temperature - The temperature parameter for generation
+ * @param maxTokens - Maximum tokens to generate
+ * @returns The response content or null if all models fail
+ */
+async function makeOpenRouterRequest(
+  messages: OpenRouterMessage[],
+  temperature: number = 0.3,
+  maxTokens: number = 50,
+): Promise<string | null> {
+  if (!OPENROUTER_API_KEY) {
+    console.warn('OPENROUTER_API_KEY not set, skipping OpenRouter request')
+    return null
+  }
+
+  // Try each model in order until one succeeds
+  for (let i = 0; i < FREE_MODELS.length; i++) {
+    const model = FREE_MODELS[i]
+    try {
+      const requestBody: OpenRouterChatRequest = {
+        model,
+        messages,
+        temperature,
+        max_tokens: maxTokens,
+      }
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://github.com/cinema-felem/scraper',
+          'X-Title': 'Cinema Scraper',
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(15000), // 15 second timeout
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.warn(`Model ${model} failed with status ${response.status}: ${errorText}`)
+        continue // Try next model
+      }
+
+      const result: OpenRouterChatResponse = await response.json()
+
+      if (result.error) {
+        console.warn(`Model ${model} returned error: ${result.error.message}`)
+        continue // Try next model
+      }
+
+      if (!result.choices || result.choices.length === 0) {
+        console.warn(`Model ${model} returned no choices`)
+        continue // Try next model
+      }
+
+      const content = result.choices[0].message.content.trim()
+      console.log(`✓ Successfully used model: ${model}`)
+      return content
+    } catch (error) {
+      console.warn(`Model ${model} failed with error:`, error)
+      // Continue to next model
+    }
+  }
+
+  console.error('All OpenRouter models failed')
+  return null
 }
 
 /**
@@ -41,11 +126,6 @@ export interface OpenRouterChatResponse {
 export async function correctMovieTitleWithOpenRouter(
   rawTitle: string,
 ): Promise<string | null> {
-  if (!OPENROUTER_API_KEY) {
-    console.warn('OPENROUTER_API_KEY not set, skipping OpenRouter correction')
-    return null
-  }
-
   if (!rawTitle || rawTitle.trim().length === 0) {
     return null
   }
@@ -65,48 +145,23 @@ Return ONLY the corrected movie title, nothing else. If the title looks correct,
 
     const userPrompt = `Correct and normalize this movie title for TMDB search: "${rawTitle}"`
 
-    const requestBody: OpenRouterChatRequest = {
-      model: 'openai/gpt-3.5-turbo', // Using a fast, cost-effective model
-      messages: [
+    console.log(`Requesting title correction from OpenRouter for: "${rawTitle}"`)
+
+    const content = await makeOpenRouterRequest(
+      [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 0.3, // Low temperature for more consistent corrections
-      max_tokens: 50, // Movie titles are short
-    }
+      0.3, // Low temperature for more consistent corrections
+      50, // Movie titles are short
+    )
 
-    console.log(`Requesting title correction from OpenRouter for: "${rawTitle}"`)
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://github.com/cinema-felem/scraper',
-        'X-Title': 'Cinema Scraper',
-      },
-      body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(15000), // 15 second timeout
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(
-        `OpenRouter API returned status ${response.status}: ${errorText}`,
-      )
-    }
-
-    const result: OpenRouterChatResponse = await response.json()
-
-    if (!result.choices || result.choices.length === 0) {
-      console.warn('OpenRouter returned no choices')
+    if (!content) {
       return null
     }
 
-    const correctedTitle = result.choices[0].message.content.trim()
-
     // Remove quotes if the LLM wrapped the title in them
-    const cleanedTitle = correctedTitle.replace(/^["']|["']$/g, '')
+    const cleanedTitle = content.replace(/^["']|["']$/g, '')
 
     console.log(
       `OpenRouter corrected title: "${rawTitle}" → "${cleanedTitle}"`,
@@ -140,11 +195,6 @@ Return ONLY the corrected movie title, nothing else. If the title looks correct,
 export async function extractMovieTitleWithOpenRouter(
   complexTitle: string,
 ): Promise<string | null> {
-  if (!OPENROUTER_API_KEY) {
-    console.warn('OPENROUTER_API_KEY not set, skipping OpenRouter extraction')
-    return null
-  }
-
   if (!complexTitle || complexTitle.trim().length === 0) {
     return null
   }
@@ -162,48 +212,24 @@ Return ONLY the extracted movie title, nothing else.`
 
     const userPrompt = `Extract the movie title from: "${complexTitle}"`
 
-    const requestBody: OpenRouterChatRequest = {
-      model: 'openai/gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 50,
-    }
-
     console.log(
       `Requesting title extraction from OpenRouter for: "${complexTitle}"`,
     )
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://github.com/cinema-felem/scraper',
-        'X-Title': 'Cinema Scraper',
-      },
-      body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(15000),
-    })
+    const content = await makeOpenRouterRequest(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      0.3,
+      50,
+    )
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(
-        `OpenRouter API returned status ${response.status}: ${errorText}`,
-      )
-    }
-
-    const result: OpenRouterChatResponse = await response.json()
-
-    if (!result.choices || result.choices.length === 0) {
-      console.warn('OpenRouter returned no choices')
+    if (!content) {
       return null
     }
 
-    const extractedTitle = result.choices[0].message.content.trim()
-    const cleanedTitle = extractedTitle.replace(/^["']|["']$/g, '')
+    const cleanedTitle = content.replace(/^["']|["']$/g, '')
 
     console.log(
       `OpenRouter extracted title: "${complexTitle}" → "${cleanedTitle}"`,
