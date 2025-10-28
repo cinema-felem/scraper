@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cinema-felem/scraper)
+
 [https://deepwiki.com/cinema-felem/scraper/](https://deepwiki.com/cinema-felem/scraper/)
 
 1. Scrape (scrape.js)
