@@ -113,107 +113,52 @@ async function makeOpenRouterRequest(
 }
 
 /**
- * Normalizes and corrects a movie title using OpenRouter's LLM API
- * This is useful when TMDB search fails due to:
- * - Typos or misspellings
- * - Special characters or formatting issues
- * - Abbreviations that need expansion
- * - Foreign language titles that need translation
+ * Attempts to normalize multiple movie titles in a single OpenRouter request
+ * Normalization covers typo correction, metadata stripping and formatting fixes
  *
- * @param rawTitle - The raw movie title from the cinema scraper
- * @returns The corrected/normalized title, or null if correction fails
+ * @param rawTitles - Array of movie titles that could not be matched on TMDB
+ * @returns Record mapping original titles to normalized titles
  */
-export async function correctMovieTitleWithOpenRouter(
-  rawTitle: string,
-): Promise<string | null> {
-  if (!rawTitle || rawTitle.trim().length === 0) {
-    return null
+export async function normalizeMovieTitlesWithOpenRouter(
+  rawTitles: string[],
+): Promise<Record<string, string>> {
+  const uniqueTitles = Array.from(
+    new Set(
+      rawTitles
+        .map(title => title?.trim())
+        .filter((title): title is string => Boolean(title && title.length > 0)),
+    ),
+  )
+
+  if (uniqueTitles.length === 0) {
+    return {}
   }
 
   try {
-    const systemPrompt = `You are a movie title normalization assistant. Your job is to correct and normalize movie titles for searching in The Movie Database (TMDB).
+    const systemPrompt = `You are a movie title normalization assistant helping prepare titles for searching on The Movie Database (TMDB).
 
-When given a movie title, you should:
-1. Fix any obvious typos or misspellings
-2. Expand common abbreviations (e.g., "Spiderman" → "Spider-Man")
-3. Remove or correct special characters that might interfere with search
-4. Keep the title in its original language if it's a well-known international film
-5. For sequels, ensure proper formatting (e.g., "Movie 2" → "Movie II" or "Movie Part 2")
-6. Remove any extra metadata like year, format (IMAX, 3D), or language tags
+For every title provided:
+1. Fix typos or misspellings.
+2. Expand common abbreviations (e.g., "Spiderman" → "Spider-Man").
+3. Remove special characters or metadata that would hurt search (years, formats like IMAX/3D, release notes, language tags, edition details, etc.).
+4. Keep well-known international titles in their widely recognised form.
+5. Ensure sequels and numbered entries use standard formatting (e.g., "II", "Part 2", etc.).
+6. Return the best search-ready title for TMDB.
 
-Return ONLY the corrected movie title, nothing else. If the title looks correct, return it as-is.`
+Respond **only** with valid JSON where each key is exactly the original title provided and each value is the normalized title. Example:
+{ "Raw Title" : "Normalized Title" }`
 
-    const userPrompt = `Correct and normalize this movie title for TMDB search: "${rawTitle}"`
+    const formattedTitles = uniqueTitles
+      .map((title, index) => `${index + 1}. ${title}`)
+      .join('\n')
 
-    console.log(`Requesting title correction from OpenRouter for: "${rawTitle}"`)
+    const userPrompt = `Normalize the following movie titles for TMDB search.
+Return a single JSON object mapping each original title to its normalized title.
 
-    const content = await makeOpenRouterRequest(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      0.3, // Low temperature for more consistent corrections
-      50, // Movie titles are short
-    )
-
-    if (!content) {
-      return null
-    }
-
-    // Remove quotes if the LLM wrapped the title in them
-    const cleanedTitle = content.replace(/^["']|["']$/g, '')
+Titles:\n${formattedTitles}`
 
     console.log(
-      `OpenRouter corrected title: "${rawTitle}" → "${cleanedTitle}"`,
-    )
-
-    // Only return the corrected title if it's different and non-empty
-    if (cleanedTitle && cleanedTitle !== rawTitle) {
-      return cleanedTitle
-    }
-
-    return null
-  } catch (error) {
-    console.error(
-      `Error correcting title "${rawTitle}" with OpenRouter:`,
-      error,
-    )
-    return null
-  }
-}
-
-/**
- * Attempts to extract the most likely movie title from a complex string
- * Useful when the scraped data contains extra information like:
- * - "Movie Title (2024) [IMAX]"
- * - "Movie Title - Special Edition"
- * - "Movie Title 电影"
- *
- * @param complexTitle - A title string with potential extra metadata
- * @returns A cleaner title, or null if extraction fails
- */
-export async function extractMovieTitleWithOpenRouter(
-  complexTitle: string,
-): Promise<string | null> {
-  if (!complexTitle || complexTitle.trim().length === 0) {
-    return null
-  }
-
-  try {
-    const systemPrompt = `You are a movie title extraction assistant. Extract ONLY the core movie title from strings that may contain extra metadata.
-
-Examples:
-- "Spider-Man: No Way Home (2024) [IMAX 3D]" → "Spider-Man: No Way Home"
-- "The Batman - Extended Edition" → "The Batman"
-- "Frozen II 魔雪奇緣2" → "Frozen II"
-- "Top Gun: Maverick [4K]" → "Top Gun: Maverick"
-
-Return ONLY the extracted movie title, nothing else.`
-
-    const userPrompt = `Extract the movie title from: "${complexTitle}"`
-
-    console.log(
-      `Requesting title extraction from OpenRouter for: "${complexTitle}"`,
+      `Requesting OpenRouter normalization for ${uniqueTitles.length} movie titles`,
     )
 
     const content = await makeOpenRouterRequest(
@@ -221,30 +166,34 @@ Return ONLY the extracted movie title, nothing else.`
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      0.3,
-      50,
+      0.2,
+      600,
     )
 
     if (!content) {
-      return null
+      return {}
     }
 
-    const cleanedTitle = content.replace(/^["']|["']$/g, '')
-
-    console.log(
-      `OpenRouter extracted title: "${complexTitle}" → "${cleanedTitle}"`,
-    )
-
-    if (cleanedTitle && cleanedTitle !== complexTitle) {
-      return cleanedTitle
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.warn('OpenRouter response did not contain JSON output:', content)
+      return {}
     }
 
-    return null
+    const parsed = JSON.parse(jsonMatch[0]) as Record<string, string>
+    const normalizedMap: Record<string, string> = {}
+
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!key || typeof value !== 'string') {
+        continue
+      }
+
+      normalizedMap[key.trim()] = value.trim()
+    }
+
+    return normalizedMap
   } catch (error) {
-    console.error(
-      `Error extracting title "${complexTitle}" with OpenRouter:`,
-      error,
-    )
-    return null
+    console.error('Error normalizing titles with OpenRouter:', error)
+    return {}
   }
 }
