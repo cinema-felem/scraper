@@ -19,3 +19,16 @@
    Get metadata from TMDB/Google Maps
    Get rating from OMDB, Trakt and Letterboxd
    Store on data/metadata
+
+   **OpenRouter Integration for Unmatched Movies:**
+   When TMDB search returns no results for a movie title, the system automatically:
+   1. Uses OpenRouter API to correct/normalize the title
+   2. Retries TMDB search with corrected title
+   3. If still no results, extracts core title from complex strings
+   4. Retries TMDB search with extracted title
+
+   This improves match rates for:
+   - Titles with typos or misspellings
+   - Abbreviated titles
+   - Titles with extra metadata (IMAX, 3D, year, etc.)
+   - Foreign language titles with mixed scripts
