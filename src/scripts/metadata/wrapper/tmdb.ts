@@ -1,10 +1,7 @@
 const TMDBKey = process.env.TMDB_API_KEY
 
 import { getEditDistance } from '../../../text'
-import {
-  correctMovieTitleWithOpenRouter,
-  extractMovieTitleWithOpenRouter,
-} from './openrouter'
+import { normalizeMovieTitlesWithOpenRouter } from './openrouter'
 
 export type BaseMovie = {
   filmTitle: string
@@ -209,51 +206,61 @@ export type MovieRatings = {
 export const lookupMovieOnTMDB = async ({
   filmTitle,
   tmdbId,
+  allowOpenRouter = true,
+  searchOverride,
 }: {
   filmTitle: string
   tmdbId?: number | null
+  allowOpenRouter?: boolean
+  searchOverride?: string | null
 }): Promise<ProcessedMovie | null> => {
   try {
     if (!tmdbId) {
-      if (!filmTitle) return null
+      const trimmedFilmTitle = filmTitle.trim()
+      const normalizedOverride = searchOverride?.trim()
+      const initialSearchTerm =
+        normalizedOverride && normalizedOverride.length > 0
+          ? normalizedOverride
+          : trimmedFilmTitle
 
-      let searchResults = await searchMovieOnTMDB(filmTitle)
-      let searchTerm = filmTitle
+      if (!initialSearchTerm) return null
+
+      let searchTerm = initialSearchTerm
+      let searchResults = await searchMovieOnTMDB(searchTerm)
       let usedOpenRouter = false
 
-      // If no results, try OpenRouter correction as fallback
-      if (searchResults.length === 0) {
-        console.log(`No TMDB search results found for "${filmTitle}", trying OpenRouter correction...`)
+      if (searchResults.length === 0 && allowOpenRouter && !searchOverride) {
+        console.log(
+          `No TMDB search results found for "${filmTitle}", requesting OpenRouter normalization...`,
+        )
 
-        // First attempt: Correct/normalize the title
-        const correctedTitle = await correctMovieTitleWithOpenRouter(filmTitle)
-        if (correctedTitle && correctedTitle !== filmTitle) {
-          console.log(`Retrying TMDB search with corrected title: "${correctedTitle}"`)
-          searchResults = await searchMovieOnTMDB(correctedTitle)
-          searchTerm = correctedTitle
+        const normalizedTitles = await normalizeMovieTitlesWithOpenRouter([
+          filmTitle,
+        ])
+        const normalizedTitle =
+          normalizedTitles[trimmedFilmTitle] ?? normalizedTitles[filmTitle]
+
+        if (normalizedTitle && normalizedTitle !== filmTitle) {
+          console.log(
+            `Retrying TMDB search with OpenRouter normalized title: "${normalizedTitle}"`,
+          )
+          searchTerm = normalizedTitle
+          searchResults = await searchMovieOnTMDB(searchTerm)
           usedOpenRouter = true
         }
+      }
 
-        // Second attempt: Extract core title from complex string
-        if (searchResults.length === 0) {
-          const extractedTitle = await extractMovieTitleWithOpenRouter(filmTitle)
-          if (extractedTitle && extractedTitle !== filmTitle && extractedTitle !== correctedTitle) {
-            console.log(`Retrying TMDB search with extracted title: "${extractedTitle}"`)
-            searchResults = await searchMovieOnTMDB(extractedTitle)
-            searchTerm = extractedTitle
-            usedOpenRouter = true
-          }
-        }
+      if (searchResults.length === 0) {
+        console.log(
+          `No TMDB search results found for "${filmTitle}" using search term "${searchTerm}"`,
+        )
+        return null
+      }
 
-        // If still no results after OpenRouter attempts, give up
-        if (searchResults.length === 0) {
-          console.log(`No TMDB search results found for "${filmTitle}" even after OpenRouter correction`)
-          return null
-        }
-
-        if (usedOpenRouter) {
-          console.log(`✓ OpenRouter successfully helped find match for "${filmTitle}" → "${searchTerm}"`)
-        }
+      if (usedOpenRouter) {
+        console.log(
+          `✓ OpenRouter successfully helped find match for "${filmTitle}" → "${searchTerm}"`,
+        )
       }
 
       const tmdbSortedResults = sortTMDBResults(searchTerm, searchResults)

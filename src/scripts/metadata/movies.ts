@@ -3,6 +3,7 @@ import { lookupMovieOnTMDB, ProcessedMovie } from './wrapper/tmdb'
 import { lookupRatingsOnOMDB } from './wrapper/omdb'
 import { lookupRatingsOnTrakt } from './wrapper/trakt'
 import { lookupRatingsOnLetterboxd } from './wrapper/letterboxd'
+import { normalizeMovieTitlesWithOpenRouter } from './wrapper/openrouter'
 import { retrieveMovies, updateMovieTMDB, retrieveTMDB } from '../storage/movie'
 import { Movie as PrismaMovie, tmdb as PrismaTMDB } from '@prisma/client'
 import logger from '../../utils/logger'
@@ -17,6 +18,7 @@ export const lookupMovies = async (): Promise<
 > => {
   const movies = await retrieveMovies()
   const results: (ProcessedMovie | PrismaTMDB)[] = []
+  const unmatchedMovies: PrismaMovie[] = []
 
   logger.info(`Processing metadata for ${movies.length} movies sequentially`)
 
@@ -40,17 +42,54 @@ export const lookupMovies = async (): Promise<
       }
     }
 
-    const apiMovie: ProcessedMovie | null = await fetchAndEnrichMovie(movie)
+    const apiMovie: ProcessedMovie | null = await fetchAndEnrichMovie(movie, {
+      allowOpenRouter: false,
+      suppressNotFoundLog: true,
+    })
 
     if (apiMovie?.external_ids?.tmdb_id) {
       await updateMovieTMDB(movie, apiMovie)
-    } else {
-      logger.warn('No TMDB ID found:', apiMovie)
+      results.push(apiMovie)
+      continue
     }
 
-    // Add the movie to results if it's not null
-    if (apiMovie) {
-      results.push(apiMovie)
+    unmatchedMovies.push(movie)
+  }
+
+  if (unmatchedMovies.length > 0) {
+    logger.info(
+      `Attempting OpenRouter normalization for ${unmatchedMovies.length} unmatched movie titles`,
+    )
+
+    const normalizationMap = await normalizeMovieTitlesWithOpenRouter(
+      unmatchedMovies.map(movie => movie.title),
+    )
+
+    for (const movie of unmatchedMovies) {
+      const trimmedTitle = movie.title.trim()
+      const normalizedTitle =
+        normalizationMap[trimmedTitle] ?? normalizationMap[movie.title]
+
+      if (!normalizedTitle) {
+        logger.warn(
+          `OpenRouter did not return a normalized title for ${movie.title}`,
+        )
+        continue
+      }
+
+      const apiMovie = await fetchAndEnrichMovie(movie, {
+        allowOpenRouter: false,
+        searchOverride: normalizedTitle,
+      })
+
+      if (apiMovie?.external_ids?.tmdb_id) {
+        await updateMovieTMDB(movie, apiMovie)
+        results.push(apiMovie)
+      } else {
+        logger.warn(
+          `No TMDB ID found for ${movie.title} even after OpenRouter normalization`,
+        )
+      }
     }
   }
 
@@ -65,10 +104,23 @@ export const lookupMovies = async (): Promise<
  */
 export const fetchAndEnrichMovie = async (
   movie: PrismaMovie,
+  options: {
+    allowOpenRouter?: boolean
+    searchOverride?: string | null
+    suppressNotFoundLog?: boolean
+  } = {},
 ): Promise<ProcessedMovie | null> => {
+  const {
+    allowOpenRouter = true,
+    searchOverride,
+    suppressNotFoundLog = false,
+  } = options
+
   const apiMovie: ProcessedMovie | null = await lookupMovieOnTMDB({
     tmdbId: movie.tmdbId,
     filmTitle: movie.title,
+    allowOpenRouter,
+    searchOverride,
   })
 
   logger.info(
@@ -76,7 +128,19 @@ export const fetchAndEnrichMovie = async (
   )
 
   if (!apiMovie) {
-    logger.warn(`No API data found for ${movie.title}`)
+    if (!suppressNotFoundLog) {
+      logger.warn(`No API data found for ${movie.title}`)
+    }
+    return null
+  }
+
+  if (!apiMovie.external_ids?.tmdb_id) {
+    if (!suppressNotFoundLog) {
+      logger.warn(
+        `No TMDB ID found in API response for ${movie.title}`,
+        apiMovie,
+      )
+    }
     return null
   }
 
