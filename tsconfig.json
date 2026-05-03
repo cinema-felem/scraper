@@ -16,7 +16,8 @@
     "strictFunctionTypes": true,
     "strictPropertyInitialization": true,
     "resolveJsonModule": true,
-    "types": ["node", "selenium-webdriver", "natural", "mocha"],
+    "lib": ["ES2023", "DOM"],
+    "types": ["node", "natural", "mocha"],
     "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {

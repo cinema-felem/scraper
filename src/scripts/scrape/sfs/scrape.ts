@@ -1,5 +1,5 @@
-import { WebDriver } from 'selenium-webdriver'
-import { createChromeDriver, safeQuitDriver } from '../../../utils/selenium-config'
+import { Browser } from 'playwright'
+import { createPlaywrightSession, closePlaywrightSession } from '../../../utils/playwright-config'
 import { SFSMovie, SFSShowtime } from './types'
 
 const SFS_SITE = 'https://sfs-somerset.com'
@@ -57,62 +57,62 @@ export const scrapeShowtimes = async (): Promise<{
   movies: SFSMovie[]
   showtimes: SFSShowtime[]
 }> => {
-  let driver: WebDriver | null = null
+  let browser: Browser | null = null
   try {
-    driver = await createChromeDriver()
-    const d = driver
+    const { browser: b, page } = await createPlaywrightSession()
+    browser = b
 
-    await d.get(SFS_SITE)
-    await d.sleep(3000)
+    await page.goto(SFS_SITE)
+    await page.waitForTimeout(3000)
 
     // Extract film sections from homepage
-    const rawFilms = await d.executeScript<RawFilmSection[]>(`
-      var films = [];
+    const rawFilms = await page.evaluate<RawFilmSection[]>(() => {
+      var films: any[] = []
       document.querySelectorAll('section').forEach(function(section) {
-        var h2 = section.querySelector('h2');
-        if (!h2) return;
-        var title = h2.textContent.trim();
-        if (!title || title.toLowerCase().includes('book') || title.toLowerCase().includes('welcome') || title.toLowerCase().includes('upcoming') || title.toLowerCase().includes('featured') || title.toLowerCase().includes('bring') || title.toLowerCase().includes('frequently') || title.toLowerCase().includes('if you')) return;
+        var h2 = section.querySelector('h2')
+        if (!h2) return
+        var title = h2.textContent ? h2.textContent.trim() : ''
+        if (!title || title.toLowerCase().includes('book') || title.toLowerCase().includes('welcome') || title.toLowerCase().includes('upcoming') || title.toLowerCase().includes('featured') || title.toLowerCase().includes('bring') || title.toLowerCase().includes('frequently') || title.toLowerCase().includes('if you')) return
 
-        var h4s = section.querySelectorAll('h4');
-        var durationMins = 0, language = '', rating = '';
+        var h4s = section.querySelectorAll('h4')
+        var durationMins = 0, language = '', rating = ''
         h4s.forEach(function(h) {
-          var t = h.textContent.trim();
-          var dm = t.match(/(\\d+)\\s*[Mm]inutes?/);
-          if (dm) durationMins = parseInt(dm[1]);
+          var t = h.textContent ? h.textContent.trim() : ''
+          var dm = t.match(/(\d+)\s*[Mm]inutes?/)
+          if (dm) durationMins = parseInt(dm[1])
           if (t.includes('|')) {
-            var parts = t.split('|').map(function(p) { return p.trim(); });
+            var parts = t.split('|').map(function(p) { return p.trim() })
             parts.forEach(function(p) {
-              if (!rating && /^[A-Z][A-Z0-9]{0,3}(\\s|$|\\()/.test(p)) rating = p;
-              else if (!language && (p.includes('English') || p.includes('Mandarin') || p.includes('Malay') || p.includes('no subtitles'))) language = p;
-            });
+              if (!rating && /^[A-Z][A-Z0-9]{0,3}(\s|$|\()/.test(p)) rating = p
+              else if (!language && (p.includes('English') || p.includes('Mandarin') || p.includes('Malay') || p.includes('no subtitles'))) language = p
+            })
           }
-        });
+        })
 
-        var paras = section.querySelectorAll('p');
-        var synopsis = '';
+        var paras = section.querySelectorAll('p')
+        var synopsis = ''
         paras.forEach(function(p) {
-          var t = p.textContent.trim();
-          if (t.length > 50 && !synopsis) synopsis = t;
-        });
+          var t = p.textContent ? p.textContent.trim() : ''
+          if (t.length > 50 && !synopsis) synopsis = t
+        })
 
-        var img = section.querySelector('img');
-        var posterUrl = img ? img.src : '';
+        var img = section.querySelector('img')
+        var posterUrl = img ? (img as HTMLImageElement).src : ''
 
-        films.push({ title: title, durationMins: durationMins, language: language, rating: rating, synopsis: synopsis, posterUrl: posterUrl });
-      });
-      return films;
-    `)
+        films.push({ title: title, durationMins: durationMins, language: language, rating: rating, synopsis: synopsis, posterUrl: posterUrl })
+      })
+      return films
+    })
 
     // Extract Peatix links from homepage
-    const peatixLinks = await d.executeScript<string[]>(`
-      var links = [];
+    const peatixLinks = await page.evaluate<string[]>(() => {
+      var links: string[] = []
       document.querySelectorAll('a[href*="peatix.com"]').forEach(function(a) {
-        var h = a.href;
-        if (h && !links.includes(h)) links.push(h);
-      });
-      return links;
-    `)
+        var h = (a as HTMLAnchorElement).href
+        if (h && !links.includes(h)) links.push(h)
+      })
+      return links
+    })
 
     // Build movies map
     const moviesMap = new Map<string, SFSMovie>()
@@ -137,27 +137,27 @@ export const scrapeShowtimes = async (): Promise<{
     // Visit each Peatix event page and extract session data
     for (const peatixUrl of peatixLinks) {
       try {
-        await d.get(peatixUrl)
-        await d.sleep(3000)
+        await page.goto(peatixUrl)
+        await page.waitForTimeout(3000)
 
-        const sessions = await d.executeScript<Array<{ raw: string }>>(`
-          var sessions = [];
-          var seen = new Set();
+        const sessions = await page.evaluate<Array<{ raw: string }>>(() => {
+          var sessions: any[] = []
+          var seen = new Set<string>()
           document.querySelectorAll('[class*="ticket"]').forEach(function(el) {
-            var t = el.textContent.trim().replace(/\\s+/g, ' ');
+            var t = el.textContent ? el.textContent.trim().replace(/\s+/g, ' ') : ''
             // Match individual ticket lines: "Wed 29 Apr, 7.30pm (FILM TITLE) $15"
-            var pattern = /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Thurs)\\s+(\\d{1,2})\\s+(\\w+),\\s+([\\d.:]+(?:am|pm))\\s+\\(([^)]+)\\)/gi;
-            var match;
+            var pattern = /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Thurs)\s+(\d{1,2})\s+(\w+),\s+([\d.:]+(?:am|pm))\s+\(([^)]+)\)/gi
+            var match
             while ((match = pattern.exec(t)) !== null) {
-              var key = match[0];
+              var key = match[0]
               if (!seen.has(key)) {
-                seen.add(key);
-                sessions.push({ raw: match[0], day: match[1], month: match[2], time: match[3], filmTitle: match[4] });
+                seen.add(key)
+                sessions.push({ raw: match[0], day: match[1], month: match[2], time: match[3], filmTitle: match[4] })
               }
             }
-          });
-          return sessions;
-        `)
+          })
+          return sessions
+        })
 
         for (const s of sessions as any[]) {
           const { date, time } = parseDateTime(s.day, s.month, s.time)
@@ -203,6 +203,6 @@ export const scrapeShowtimes = async (): Promise<{
     console.error('SFS: failed to scrape:', err)
     return { movies: [], showtimes: [] }
   } finally {
-    if (driver) await safeQuitDriver(driver)
+    if (browser) await closePlaywrightSession(browser)
   }
 }
