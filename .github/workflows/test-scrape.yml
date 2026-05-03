@@ -23,6 +23,7 @@ jobs:
     name: Test scrape (${{ matrix.chain }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    if: ${{ github.event.inputs.chain == '' || github.event.inputs.chain == matrix.chain }}
 
     strategy:
       fail-fast: false
@@ -36,12 +37,6 @@ jobs:
           - sfs
 
     steps:
-      - name: Skip if chain filter set and doesn't match
-        if: ${{ github.event.inputs.chain != '' && github.event.inputs.chain != matrix.chain }}
-        run: |
-          echo "Skipping ${{ matrix.chain }} (filter: ${{ github.event.inputs.chain }})"
-          exit 0
-
       - name: Checkout code
         uses: actions/checkout@v4
 

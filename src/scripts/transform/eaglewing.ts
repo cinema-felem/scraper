@@ -17,7 +17,7 @@ interface RawEagleWingMovie {
 }
 
 interface RawEagleWingSession {
-  id: number
+  id: string
   date: string
   time: string
   hall: string

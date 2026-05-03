@@ -12,7 +12,7 @@ export interface EagleWingMovie {
 }
 
 export interface EagleWingSession {
-  id: number
+  id: string
   date: string
   time: string
   hall: string

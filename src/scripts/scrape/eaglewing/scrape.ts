@@ -141,7 +141,7 @@ export const scrapeMoviesAndShowtimes = async (): Promise<{
               const bookingUrl: string = s?.link ?? `${BASE_URL}/movies`
 
               const session: EagleWingSession = {
-                id: Number(timeId),
+                id: timeId,
                 date,
                 time,
                 hall,
