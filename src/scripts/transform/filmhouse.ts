@@ -1,5 +1,7 @@
-import { StandardCinema, StandardMovie, StandardShowtime } from '@/types/standard'
-import { cleanString } from '../../text'
+import { StandardShowtime } from '@/types/standard'
+import { makeTransformCinemas, makeTransformMovies } from './factory'
+import { BaseTransformer } from './base'
+import logger from '@/utils/logger'
 
 interface RawFilmhouseCinema {
   id: string
@@ -25,31 +27,6 @@ interface RawFilmhouseSession {
   bookingUrl: string
 }
 
-const transformCinemas = (cinemas: RawFilmhouseCinema[]): StandardCinema[] =>
-  cinemas.map(({ id, name, address }) => ({
-    id: `filmhouse:${id}`,
-    name: cleanString(name),
-    searchableName: cleanString(name),
-    source: {
-      chain: 'filmhouse',
-      id,
-      details: { address },
-    },
-  }))
-
-const transformMovies = (movies: RawFilmhouseMovie[]): StandardMovie[] =>
-  movies.map(({ id, title, language, genre }) => ({
-    id: `filmhouse:${id}`,
-    filmTitle: cleanString(title),
-    language: language || 'Unknown',
-    format: '',
-    source: {
-      chain: 'filmhouse',
-      id,
-      details: { genre },
-    },
-  }))
-
 const parseFormat = (attributes: string[]): string => {
   if (!attributes || attributes.length === 0) return '2D'
   const joined = attributes.join(' ').toUpperCase()
@@ -60,37 +37,47 @@ const parseFormat = (attributes: string[]): string => {
   return attributes[0] || '2D'
 }
 
-const transformShowtimes = (
-  sessions: RawFilmhouseSession[],
-): StandardShowtime[] =>
-  sessions
-    .filter(s => s.startTime && s.filmId)
-    .map(s => {
-      const format = parseFormat(s.attributes)
-      return {
-        id: `filmhouse:${s.id}`,
-        filmId: `filmhouse:${s.filmId}`,
-        cinemaId: 'filmhouse:1',
-        unixTime: new Date(s.startTime).getTime(),
-        link: s.bookingUrl || 'https://filmhouse.com.sg/',
-        ticketType: { label: format, type: format },
-        movieFormat: format,
-        details: {
-          screen: s.screenName,
-          showTime: s.startTime,
-          screenId: s.screenId,
-        },
-      }
-    })
+class FilmhouseTransformer extends BaseTransformer {
+  readonly chain = 'filmhouse'
 
-const standardiseCinemaChain = (raw: {
-  movies: RawFilmhouseMovie[]
-  cinemas: RawFilmhouseCinema[]
-  showtimes: RawFilmhouseSession[]
-}) => ({
-  movies: transformMovies(raw.movies),
-  cinemas: transformCinemas(raw.cinemas),
-  showtimes: transformShowtimes(raw.showtimes),
-})
+  transformCinemas = makeTransformCinemas<RawFilmhouseCinema>({
+    chain: 'filmhouse',
+    getId: c => c.id,
+    getName: c => c.name,
+    getDetails: c => ({ address: c.address }),
+  })
 
-module.exports = { standardiseCinemaChain }
+  transformMovies = makeTransformMovies<RawFilmhouseMovie>({
+    chain: 'filmhouse',
+    getId: m => m.id,
+    getTitle: m => m.title,
+    getLanguage: m => m.language,
+    getDetails: m => ({ genre: m.genre }),
+  })
+
+  transformShowtimes(rawSessions: unknown[]): StandardShowtime[] {
+    const sessions = rawSessions as RawFilmhouseSession[]
+    const skippedCount = sessions.filter(s => !s.startTime || !s.filmId).length
+    if (skippedCount > 0)
+      logger.warn(`[filmhouse] ${skippedCount} sessions skipped: missing startTime or filmId`)
+
+    return sessions
+      .filter(s => s.startTime && s.filmId)
+      .map(s => {
+        const format = parseFormat(s.attributes)
+        return {
+          id: `filmhouse:${s.id}`,
+          filmId: `filmhouse:${s.filmId}`,
+          cinemaId: 'filmhouse:1',
+          unixTime: new Date(s.startTime).getTime(),
+          link: s.bookingUrl || 'https://filmhouse.com.sg/',
+          ticketType: { label: format, type: format },
+          movieFormat: format,
+          details: { screen: s.screenName, showTime: s.startTime, screenId: s.screenId },
+        }
+      })
+  }
+}
+
+const transformer = new FilmhouseTransformer()
+export const standardiseCinemaChain = transformer.standardiseCinemaChain.bind(transformer)

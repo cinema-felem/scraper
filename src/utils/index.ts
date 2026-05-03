@@ -3,3 +3,5 @@
  */
 
 export { default as logger, initSentry, overrideConsole } from './logger'
+export * from './time'
+export * from './array'

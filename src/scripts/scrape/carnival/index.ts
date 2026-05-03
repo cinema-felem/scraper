@@ -1,5 +1,6 @@
 import { generateToken, fetchMoviesFromApi, fetchShowtimesForDate } from './scrape'
 import { CarnivalMovie, CarnivalCinema, CarnivalShowtime } from './types'
+import logger from '@/utils/logger'
 
 const DAYS_AHEAD = 7
 
@@ -45,7 +46,7 @@ export const fetchShowtimes = async (): Promise<CarnivalShowtime[]> => {
         const result = await fetchShowtimesForDate(token, movie.code, dateStr)
         if (result.groups.some(g => g.sessions.length > 0)) showtimes.push(result)
       } catch (err) {
-        console.error(`Carnival: error fetching ${movie.code} on ${dateStr}:`, err)
+        logger.error(`Carnival: error fetching ${movie.code} on ${dateStr}:`, err)
       }
     }
   }

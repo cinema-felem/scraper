@@ -40,3 +40,13 @@ export interface MergedMovie extends Partial<StandardMovie> {
   titleVariations: string[]
   movieIds: string[]
 }
+
+export interface ChainTransformResult {
+  movies: StandardMovie[]
+  cinemas: StandardCinema[]
+  showtimes: StandardShowtime[]
+}
+
+export interface ChainTransformer {
+  standardiseCinemaChain(raw: unknown): ChainTransformResult
+}

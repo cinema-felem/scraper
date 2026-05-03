@@ -7,7 +7,7 @@ import {
 } from './scrape'
 import { flattenShowtimes } from './transform'
 import { GVCinema, GVCinemaShowtime, GVMovies } from './types'
-import { uniqByKeepFirst } from './utils'
+import { uniqByKeepFirst } from '@/utils/array'
 
 export const fetchShowtimes = async (): Promise<GVCinemaShowtime[]> => {
   const days = 7

@@ -4,11 +4,9 @@ import {
   StandardShowtime,
 } from '@/types/standard'
 
-import { toSingaporeUnixMs } from '../../utils/time'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { cleanString } = require('../../text')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { default: logger } = require('../../utils/logger')
+import { toSingaporeUnixMsFrom12h } from '../../utils/time'
+import { cleanString } from '../../text'
+import logger from '../../utils/logger'
 
 const formatType: Record<string, string> = {
   DGSD: 'Digital',
@@ -163,7 +161,7 @@ const transformShowtimes = (
       isDtsx,
     } = movieShowtime
 
-    const unixTime = getUnixTimestamp(displayDate, displayTime)
+    const unixTime = toSingaporeUnixMsFrom12h(displayDate, displayTime)
 
     let ticketTypeLabel = ticketTypeDict[locationVenueBrandCode]
 
@@ -199,64 +197,6 @@ const transformShowtimes = (
     })
   })
   return finalShowtimesArray
-}
-
-type MappedShowtime = {
-  id: string
-  filmId: string
-  cinemaId: string
-  unixTime: number
-  link: string
-  ticketType: {
-    label: string
-    type: string
-  }
-  movieFormat: string
-  chainSpecific: {
-    subtitles: string[]
-    seatingStatus: string
-    isMidnight: boolean
-    cinemaName: string
-    movieTitle: string
-    isDtsx: boolean
-    discounts: {
-      restrictionCode: string
-      restrictions: string
-    }
-  }
-}
-
-const getUnixTimestamp = (dateString: string, timeString: string): number => {
-  // Normalize time input (handles "HH:MM AM/PM" or "HH:MM")
-  const [normalizedTime, period] = timeString.toUpperCase().split(/ (?=AM|PM)/i)
-
-  const [hoursStr, minutes] = normalizedTime
-    .padStart(5, '0')
-    .split(':')
-
-  let hours = parseInt(hoursStr, 10)
-  if (period === 'PM' && hours !== 12) {
-    hours += 12
-  } else if (period === 'AM' && hours === 12) {
-    hours = 0
-  }
-
-  // dateString is already YYYY-MM-DD
-  return toSingaporeUnixMs(dateString, `${String(hours).padStart(2, '0')}:${minutes}`)
-}
-
-type ShawMappedCinema = {
-  id: string
-  name: string
-  location: string
-  source: {
-    chain: string
-    id: number
-    chainSpecific: {
-      address: string
-      code: string
-    }
-  }
 }
 
 const transformCinemas = (cinemasArray: ShawRawCinema[]): StandardCinema[] => {
@@ -302,7 +242,9 @@ const mergeMovieIds = (
       return showtime
     },
   )
-  logger.warn('Missing film IDs', { filmIds: [...missingFilmId] })
+  const droppedCount = showtimeArray.length - filteredShowtimeArray.length
+  if (missingFilmId.size > 0)
+    logger.warn(`[shaw] ${missingFilmId.size} filmIds unresolvable; ${droppedCount} showtimes dropped`, { filmIds: [...missingFilmId] })
   return filteredShowtimeArray
 }
 

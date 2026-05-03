@@ -2,6 +2,7 @@ import { promises as fs, mkdirSync } from 'fs'
 import * as path from 'path'
 import { EventEmitter } from 'events'
 import logger, { initSentry, DataCountMetrics } from './utils/logger'
+import { CINEMA_CHAINS, CinemaChain } from './types/chains'
 import * as GV from './scripts/scrape/gv'
 import * as Shaw from './scripts/scrape/shaw'
 import * as Carnival from './scripts/scrape/carnival'
@@ -23,23 +24,16 @@ initSentry({
   }
 })
 
-/**
- * Define available cinema chains
- */
-type CinemaChain = 'gv' | 'shaw' | 'carnival' | 'eaglewing' | 'filmhouse' | 'sfs'
-const DEFAULT_CINEMA_CHAINS: CinemaChain[] = [
-  'gv',
-  'shaw',
-  'carnival',
-  'eaglewing',
-  'filmhouse',
-  'sfs',
-]
+interface ScraperModule {
+  fetchMovies(): Promise<unknown[]>
+  fetchCinemas(): Promise<unknown[]>
+  fetchShowtimes(): Promise<unknown[]>
+}
 
 /**
  * Configure which cinema chains to scrape based on command line arguments
  */
-let cinemaChains = [...DEFAULT_CINEMA_CHAINS]
+let cinemaChains: CinemaChain[] = [...CINEMA_CHAINS]
 if (process.argv[2]) {
   cinemaChains = [process.argv[2] as CinemaChain]
 }
@@ -67,8 +61,7 @@ async function scrapeChain(cinemaChain: CinemaChain): Promise<void> {
     logger.info(`Starting scrape for ${cinemaChain}...`);
     logger.addBreadcrumb('scraper', `Starting scrape for ${cinemaChain}`);
 
-    // Map cinema chain to the appropriate module
-    const scraperModules: Record<CinemaChain, any> = {
+    const scraperModules: Record<CinemaChain, ScraperModule> = {
       gv: GV,
       shaw: Shaw,
       carnival: Carnival,
@@ -77,23 +70,7 @@ async function scrapeChain(cinemaChain: CinemaChain): Promise<void> {
       sfs: SFS,
     };
 
-    // Get the appropriate scraper module
-    const scraperModule = scraperModules[cinemaChain];
-
-    if (!scraperModule) {
-      throw new Error(`No scraper module found for ${cinemaChain}`);
-    }
-
-    // Define types for the scraper functions
-    type ScraperFunction<T> = () => Promise<T[]>;
-
-    // Destructure with default empty functions in case methods are missing
-    const fetchMovies: ScraperFunction<any> =
-      scraperModule.fetchMovies || (async () => []);
-    const fetchCinemas: ScraperFunction<any> =
-      scraperModule.fetchCinemas || (async () => []);
-    const fetchShowtimes: ScraperFunction<any> =
-      scraperModule.fetchShowtimes || (async () => []);
+    const { fetchMovies, fetchCinemas, fetchShowtimes } = scraperModules[cinemaChain];
 
     // Fetch movies with tracing
     const moviesSpan = transaction.startChild(`fetch_movies_${cinemaChain}`);
