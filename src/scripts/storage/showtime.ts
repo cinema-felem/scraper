@@ -1,5 +1,5 @@
 import { StandardShowtime } from '@/types/standard'
-import { PrismaClient, Showtime, Movie, Prisma } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
 import { retrieveMovies } from './movie'
 
 const prisma = new PrismaClient()
