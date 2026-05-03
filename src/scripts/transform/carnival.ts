@@ -1,5 +1,8 @@
-import { StandardCinema, StandardMovie, StandardShowtime } from '@/types/standard'
-import { cleanString } from '../../text'
+import { StandardShowtime } from '@/types/standard'
+import { toSingaporeUnixMsFrom12h } from '@/utils/time'
+import { makeTransformCinemas, makeTransformMovies } from './factory'
+import { BaseTransformer } from './base'
+import logger from '@/utils/logger'
 
 interface RawCarnivalCinema {
   id: string
@@ -51,70 +54,50 @@ const resolveCinemaId = (cinemaName: string): string => {
   return 'carnival:golden-mile-tower'
 }
 
-const transformCinemas = (cinemas: RawCarnivalCinema[]): StandardCinema[] =>
-  cinemas.map(({ id, name, address }) => ({
-    id: `carnival:${id}`,
-    name: cleanString(name),
-    searchableName: cleanString(name),
-    source: {
-      chain: 'carnival',
-      id,
-      details: { address },
-    },
-  }))
+class CarnivalTransformer extends BaseTransformer {
+  readonly chain = 'carnival'
 
-const transformMovies = (movies: RawCarnivalMovie[]): StandardMovie[] =>
-  movies.map(({ code, name, language, genre }) => ({
-    id: `carnival:${code}`,
-    filmTitle: cleanString(name),
-    language: language || 'Unknown',
-    format: '',
-    source: {
-      chain: 'carnival',
-      id: code,
-      details: { genre },
-    },
-  }))
+  transformCinemas = makeTransformCinemas<RawCarnivalCinema>({
+    chain: 'carnival',
+    getId: c => c.id,
+    getName: c => c.name,
+    getDetails: c => ({ address: c.address }),
+  })
 
-const toUnixTime = (date: string, time: string): number => {
-  const upper = time.toUpperCase().trim()
-  const period = upper.endsWith('AM') ? 'AM' : upper.endsWith('PM') ? 'PM' : null
-  const timePart = period ? upper.slice(0, -2).trim() : upper
-  const [h, m] = timePart.split(':')
-  let hours = parseInt(h, 10)
-  if (period === 'PM' && hours !== 12) hours += 12
-  if (period === 'AM' && hours === 12) hours = 0
-  const iso = `${date}T${String(hours).padStart(2, '0')}:${(m || '00').padStart(2, '0')}:00+08:00`
-  return new Date(iso).getTime()
+  transformMovies = makeTransformMovies<RawCarnivalMovie>({
+    chain: 'carnival',
+    getId: m => m.code,
+    getTitle: m => m.name,
+    getLanguage: m => m.language,
+    getDetails: m => ({ genre: m.genre }),
+  })
+
+  transformShowtimes(rawShowtimes: unknown[]): StandardShowtime[] {
+    const showtimes = rawShowtimes as RawCarnivalShowtime[]
+    const allSessions = showtimes.flatMap(st => st.groups.flatMap(g => g.sessions))
+    const skippedCount = allSessions.filter(s => !s.showTime).length
+    if (skippedCount > 0)
+      logger.warn(`[carnival] ${skippedCount} sessions skipped: missing showTime`)
+
+    return showtimes.flatMap(({ movieCode, date, groups }) =>
+      groups.flatMap(({ cinemaName, sessions }) => {
+        const cinemaId = resolveCinemaId(cinemaName)
+        return sessions
+          .filter(s => s.showTime)
+          .map(s => ({
+            id: `carnival:${s.showId}`,
+            filmId: `carnival:${movieCode}`,
+            cinemaId,
+            unixTime: toSingaporeUnixMsFrom12h(date, s.showTime),
+            link: s.bookingLink || 'https://carnivalcinemas.sg/',
+            ticketType: { label: s.format || '2D', type: s.format || '2D' },
+            movieFormat: s.format || '2D',
+            details: { screen: s.screen, showTime: s.showTime, date },
+          }))
+      }),
+    )
+  }
 }
 
-const transformShowtimes = (showtimes: RawCarnivalShowtime[]): StandardShowtime[] =>
-  showtimes.flatMap(({ movieCode, date, groups }) =>
-    groups.flatMap(({ cinemaName, sessions }) => {
-      const cinemaId = resolveCinemaId(cinemaName)
-      return sessions
-        .filter(s => s.showTime)
-        .map(s => ({
-          id: `carnival:${s.showId}`,
-          filmId: `carnival:${movieCode}`,
-          cinemaId,
-          unixTime: toUnixTime(date, s.showTime),
-          link: s.bookingLink || 'https://carnivalcinemas.sg/',
-          ticketType: { label: s.format || '2D', type: s.format || '2D' },
-          movieFormat: s.format || '2D',
-          details: { screen: s.screen, showTime: s.showTime, date },
-        }))
-    }),
-  )
-
-const standardiseCinemaChain = (raw: {
-  movies: RawCarnivalMovie[]
-  cinemas: RawCarnivalCinema[]
-  showtimes: RawCarnivalShowtime[]
-}) => ({
-  movies: transformMovies(raw.movies),
-  cinemas: transformCinemas(raw.cinemas),
-  showtimes: transformShowtimes(raw.showtimes),
-})
-
-module.exports = { standardiseCinemaChain }
+const transformer = new CarnivalTransformer()
+export const standardiseCinemaChain = transformer.standardiseCinemaChain.bind(transformer)

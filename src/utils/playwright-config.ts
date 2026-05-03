@@ -1,4 +1,5 @@
 import { chromium, Browser, BrowserContext, Page } from 'playwright'
+import logger from './logger'
 
 export interface PlaywrightSession {
   browser: Browser
@@ -20,6 +21,6 @@ export const closePlaywrightSession = async (browser: Browser): Promise<void> =>
   try {
     await browser.close()
   } catch (err) {
-    console.error('Error closing Playwright browser:', err)
+    logger.error('Error closing Playwright browser:', err)
   }
 }

@@ -4,7 +4,9 @@ import {
   StandardCinema,
   StandardMovie,
   StandardShowtime,
+  ChainTransformer,
 } from './types/standard'
+import { CINEMA_CHAINS } from './types/chains'
 import * as path from 'path'
 import logger, { initSentry, DataCountMetrics } from './utils/logger'
 
@@ -32,8 +34,7 @@ interface CinemaData {
 }
 
 // Configure cinema chains to process
-const DEFAULT_CINEMA_CHAINS = ['gv', 'shaw', 'carnival', 'eaglewing', 'filmhouse', 'sfs']
-let cinemaChains = [...DEFAULT_CINEMA_CHAINS]
+let cinemaChains: string[] = [...CINEMA_CHAINS]
 let singleChainMode = false
 
 // Process command line arguments
@@ -84,8 +85,8 @@ async function processAllCinemaChains(): Promise<void> {
         });
         let standardiseCinemaChain;
         try {
-          const module = require(path.join('../dist/scripts/transform/', cinemaChain));
-          standardiseCinemaChain = module.standardiseCinemaChain;
+          const mod = require(path.join('../dist/scripts/transform/', cinemaChain)) as ChainTransformer;
+          standardiseCinemaChain = mod.standardiseCinemaChain;
           logger.addBreadcrumb('module_load', `Loaded transform module for ${cinemaChain}`);
         } catch (err) {
           logger.error(`Error loading transform module for ${cinemaChain}:`, err);
