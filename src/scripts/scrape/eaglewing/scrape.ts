@@ -4,140 +4,169 @@ import { EagleWingMovie, EagleWingSession, EagleWingShowtime } from './types'
 
 const BASE_URL = 'https://www.eaglewingscinematics.com.sg'
 
+const buildHeaders = (csrfToken: string, xsrfToken: string, cookieString: string): Record<string, string> => ({
+  accept: 'application/json',
+  'content-type': 'application/json',
+  'x-csrf-token': csrfToken,
+  'x-xsrf-token': xsrfToken,
+  'x-requested-with': 'XMLHttpRequest',
+  cookie: cookieString,
+  Referer: `${BASE_URL}/movies`,
+})
+
+interface RawFilmListing {
+  link: string
+  image: string
+  title: string
+  rating: string
+  openingdate: string
+  description: string
+}
+
 /**
- * Navigates to EagleWings and extracts CSRF + XSRF tokens from cookies/meta tags
- * before making API calls that require them.
+ * Scrapes all EagleWings movies and showtimes in a single Selenium session.
+ *
+ * Flow:
+ *  1. Navigate to /movies, extract CSRF token (meta tag) + XSRF token (cookie)
+ *  2. GET /api/v1/film/showings for the movie list
+ *  3. For each movie, navigate to its detail page to read window.Vars.ScheduledFilmId
+ *  4. POST /api/v1/film/time-scheduled to get all sessions for that film
  */
-export const getTokens = async (): Promise<{ csrfToken: string; xsrfToken: string }> => {
+export const scrapeMoviesAndShowtimes = async (): Promise<{
+  movies: EagleWingMovie[]
+  showtimes: EagleWingShowtime[]
+}> => {
   let driver: WebDriver | null = null
   try {
     driver = await createChromeDriver()
     const d = driver
 
-    const cdp = await (d as any).createCDPConnection('page')
-    await cdp.execute('Page.addScriptToEvaluateOnNewDocument', {
-      source: `
-        window.__eagleTokens = { csrf: null, xsrf: null };
-        const _origFetch = window.fetch;
-        window.fetch = function(url, opts) {
-          if (typeof url === 'string' && url.includes('eaglewingscinematics')) {
-            const h = opts && opts.headers ? opts.headers : {};
-            if (h['x-csrf-token']) window.__eagleTokens.csrf = h['x-csrf-token'];
-            if (h['x-xsrf-token']) window.__eagleTokens.xsrf = h['x-xsrf-token'];
-          }
-          return _origFetch.apply(this, arguments);
-        };
-        const _origXHR = XMLHttpRequest.prototype.setRequestHeader;
-        XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
-          if (name.toLowerCase() === 'x-csrf-token') window.__eagleTokens.csrf = value;
-          if (name.toLowerCase() === 'x-xsrf-token') window.__eagleTokens.xsrf = value;
-          return _origXHR.apply(this, arguments);
-        };
-      `,
-    })
-
+    // Step 1: get CSRF and XSRF tokens
     await d.get(`${BASE_URL}/movies`)
+    await d.sleep(3000)
 
-    const tokens = await d.wait(
-      async () => {
-        const result = await d.executeScript<{ csrf: string | null; xsrf: string | null }>(
-          'return window.__eagleTokens',
-        )
-        return result?.csrf ? result : null
-      },
-      20000,
-      'Timed out waiting for EagleWings tokens',
+    const csrfToken = await d.executeScript<string>(
+      `return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? ''`,
     )
+    const cookies = await d.manage().getCookies()
+    const xsrfCookie = cookies.find((c: any) => c.name === 'XSRF-TOKEN')
+    const xsrfToken = xsrfCookie ? decodeURIComponent(xsrfCookie.value) : ''
+    // Build cookie header string to include laravel_session and XSRF-TOKEN for Node fetch
+    const cookieString = cookies
+      .map((c: any) => `${c.name}=${c.value}`)
+      .join('; ')
 
-    if (!tokens?.csrf) throw new Error('Failed to capture EagleWings CSRF token')
-    return { csrfToken: tokens.csrf, xsrfToken: tokens.xsrf ?? '' }
+    if (!csrfToken) throw new Error('EagleWings: could not read CSRF token from meta tag')
+
+    // Step 2: fetch movies list
+    const moviesRes = await fetch(`${BASE_URL}/api/v1/film/showings`, {
+      headers: buildHeaders(csrfToken, xsrfToken, cookieString),
+      method: 'GET',
+    })
+    if (!moviesRes.ok) throw new Error(`EagleWings showings API returned ${moviesRes.status}`)
+    const rawFilms: RawFilmListing[] = await moviesRes.json()
+
+    const movies: EagleWingMovie[] = []
+    const showtimes: EagleWingShowtime[] = []
+
+    // Step 3+4: for each movie, get ScheduledFilmId and fetch sessions
+    for (const film of rawFilms) {
+      const urlMatch = film.link?.match(/\/movie\/([^/]+)\/([^/]+)$/)
+      if (!urlMatch) continue
+
+      const slug = urlMatch[1]
+      const filmCode = urlMatch[2]
+
+      // Navigate to movie page to get ScheduledFilmId from window.Vars
+      try {
+        await d.get(`${BASE_URL}/movie/${slug}/${filmCode}`)
+        await d.sleep(2000)
+
+        const scheduledFilmId = await d.executeScript<string>(
+          `return window.Vars?.ScheduledFilmId ?? ''`,
+        )
+        const cinemaId = await d.executeScript<string>(
+          `return window.Vars?.CinemaId ?? '0000000001'`,
+        )
+
+        if (!scheduledFilmId) continue
+
+        const movieId = Number(scheduledFilmId)
+
+        movies.push({
+          id: movieId,
+          slug,
+          title: film.title || slug.replace(/-/g, ' '),
+          rating: film.rating || '',
+          language: '',
+          genre: '',
+          duration: 0,
+          synopsis: film.description || '',
+          posterUrl: film.image || '',
+          openingDate: film.openingdate || '',
+        })
+
+        // Step 4: POST time-scheduled to get all sessions at once
+        const sessionsRes = await fetch(`${BASE_URL}/api/v1/film/time-scheduled`, {
+          method: 'POST',
+          headers: buildHeaders(csrfToken, xsrfToken, cookieString),
+          body: JSON.stringify({
+            movie: { Title: film.title, Rating: film.rating },
+            cinema_id: cinemaId,
+            scheduledfilm_id: scheduledFilmId,
+          }),
+        })
+
+        if (!sessionsRes.ok) continue
+
+        const sessionsData = await sessionsRes.json()
+        const filmGroups: any[] = sessionsData?.films ?? []
+
+        // Collect all sessions across halls, group by date
+        const sessionsByDate = new Map<string, EagleWingSession[]>()
+
+        for (const group of filmGroups) {
+          const hall: string = group?.ScreenName ?? ''
+          const times = group?.times ?? {}
+
+          for (const [, daySessions] of Object.entries(times)) {
+            for (const s of daySessions as any[]) {
+              const screen = s?.screen ?? {}
+              const raw: string = screen?.raw ?? ''
+              if (!raw) continue
+
+              const date = raw.split('T')[0]
+              const time: string = screen?.time ?? s?.time ?? ''
+              const timeId: string = String(screen?.stamp ?? s?.id ?? `${movieId}-${raw}`)
+              const bookingUrl: string = s?.link ?? `${BASE_URL}/movies`
+
+              const session: EagleWingSession = {
+                id: Number(timeId),
+                date,
+                time,
+                hall,
+                format: '2D',
+                bookingUrl,
+              }
+
+              if (!sessionsByDate.has(date)) sessionsByDate.set(date, [])
+              sessionsByDate.get(date)!.push(session)
+            }
+          }
+        }
+
+        for (const [date, sessions] of sessionsByDate) {
+          if (sessions.length > 0) {
+            showtimes.push({ movieId, movieSlug: slug, date, sessions })
+          }
+        }
+      } catch (err) {
+        console.error(`EagleWings: error processing ${slug}:`, err)
+      }
+    }
+
+    return { movies, showtimes }
   } finally {
     if (driver) await safeQuitDriver(driver)
   }
-}
-
-const buildHeaders = (csrfToken: string, xsrfToken: string): Record<string, string> => ({
-  accept: 'application/json',
-  'accept-language': 'en-US,en;q=0.9',
-  'sec-fetch-dest': 'empty',
-  'sec-fetch-mode': 'cors',
-  'sec-fetch-site': 'same-origin',
-  'x-csrf-token': csrfToken,
-  'x-xsrf-token': xsrfToken,
-  'x-requested-with': 'XMLHttpRequest',
-  Referer: `${BASE_URL}/movies`,
-})
-
-export const fetchMoviesFromApi = async (
-  csrfToken: string,
-  xsrfToken: string,
-): Promise<EagleWingMovie[]> => {
-  const res = await fetch(`${BASE_URL}/api/v1/film/showings`, {
-    headers: buildHeaders(csrfToken, xsrfToken),
-    method: 'GET',
-  })
-  if (!res.ok) throw new Error(`EagleWings movies API returned ${res.status}`)
-  const data = await res.json()
-  return parseMovies(data)
-}
-
-const parseMovies = (data: any): EagleWingMovie[] => {
-  const list: any[] = Array.isArray(data)
-    ? data
-    : (data?.data ?? data?.films ?? data?.movies ?? data?.results ?? [])
-
-  return list.map((item: any, idx: number) => ({
-    id: item?.id ?? item?.film_id ?? idx,
-    slug: item?.slug ?? item?.film_slug ?? String(item?.id ?? idx),
-    title: item?.title ?? item?.film_title ?? item?.name ?? '',
-    rating: item?.rating ?? item?.classification ?? '',
-    language: item?.language ?? '',
-    genre: item?.genre ?? item?.category ?? '',
-    duration: Number(item?.duration ?? item?.runtime ?? 0),
-    synopsis: item?.synopsis ?? item?.description ?? '',
-    posterUrl: item?.poster ?? item?.image ?? item?.poster_url ?? '',
-    openingDate: item?.opening_date ?? item?.release_date ?? item?.openingdate ?? '',
-  }))
-}
-
-export const fetchShowtimesForMovie = async (
-  csrfToken: string,
-  xsrfToken: string,
-  movieSlug: string,
-  movieId: number,
-  date: string,
-): Promise<EagleWingShowtime> => {
-  try {
-    const res = await fetch(
-      `${BASE_URL}/api/v1/film/${encodeURIComponent(movieSlug)}/sessions?date=${date}`,
-      { headers: buildHeaders(csrfToken, xsrfToken), method: 'GET' },
-    )
-    if (!res.ok) return { movieId, movieSlug, date, sessions: [] }
-    const data = await res.json()
-    return parseSessions(data, movieId, movieSlug, date)
-  } catch {
-    return { movieId, movieSlug, date, sessions: [] }
-  }
-}
-
-const parseSessions = (
-  data: any,
-  movieId: number,
-  movieSlug: string,
-  date: string,
-): EagleWingShowtime => {
-  const list: any[] = Array.isArray(data)
-    ? data
-    : (data?.data ?? data?.sessions ?? data?.showtimes ?? [])
-
-  const sessions: EagleWingSession[] = list.map((item: any) => ({
-    id: item?.id ?? item?.session_id ?? item?.performance_id ?? 0,
-    date: item?.date ?? date,
-    time: item?.time ?? item?.show_time ?? item?.start_time ?? '',
-    hall: item?.hall ?? item?.screen ?? item?.cinema ?? '',
-    format: item?.format ?? item?.dimension ?? item?.type ?? '2D',
-    bookingUrl: item?.booking_url ?? item?.link ?? item?.ticket_url ?? `${BASE_URL}/ticket/${movieSlug}`,
-  }))
-
-  return { movieId, movieSlug, date, sessions }
 }

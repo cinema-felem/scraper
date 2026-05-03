@@ -1,5 +1,5 @@
-import { getVeeziToken, fetchMoviesFromApi, fetchSessionsFromApi, fetchScreensFromApi } from './scrape'
-import { FilmhouseMovie, FilmhouseScreen, FilmhouseSession } from './types'
+import { fetchFilmsAndSessions } from './scrape'
+import { FilmhouseMovie, FilmhouseSession } from './types'
 
 export interface FilmhouseCinema {
   id: string
@@ -16,16 +16,11 @@ export const fetchCinemas = async (): Promise<FilmhouseCinema[]> => [
 ]
 
 export const fetchMovies = async (): Promise<FilmhouseMovie[]> => {
-  const token = await getVeeziToken()
-  return fetchMoviesFromApi(token)
+  const { movies } = await fetchFilmsAndSessions()
+  return movies
 }
 
-export const fetchScreens = async (): Promise<FilmhouseScreen[]> => {
-  const token = await getVeeziToken()
-  return fetchScreensFromApi(token)
-}
-
-export const fetchSessions = async (): Promise<FilmhouseSession[]> => {
-  const token = await getVeeziToken()
-  return fetchSessionsFromApi(token)
+export const fetchShowtimes = async (): Promise<FilmhouseSession[]> => {
+  const { sessions } = await fetchFilmsAndSessions()
+  return sessions
 }

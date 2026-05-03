@@ -1,4 +1,4 @@
-import { getAuthToken, fetchMoviesFromApi, fetchShowtimesForDate } from './scrape'
+import { generateToken, fetchMoviesFromApi, fetchShowtimesForDate } from './scrape'
 import { CarnivalMovie, CarnivalCinema, CarnivalShowtime } from './types'
 
 const DAYS_AHEAD = 7
@@ -22,12 +22,12 @@ export const fetchCinemas = async (): Promise<CarnivalCinema[]> => [
 ]
 
 export const fetchMovies = async (): Promise<CarnivalMovie[]> => {
-  const token = await getAuthToken()
+  const token = generateToken()
   return fetchMoviesFromApi(token)
 }
 
 export const fetchShowtimes = async (): Promise<CarnivalShowtime[]> => {
-  const token = await getAuthToken()
+  const token = generateToken()
   const movies = await fetchMoviesFromApi(token)
 
   const today = new Date()
