@@ -45,23 +45,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Install Chrome for Selenium
-        run: |
-          wget -q -O /usr/share/keyrings/google-chrome.gpg \
-            https://dl-ssl.google.com/linux/linux_signing_key.pub
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] \
-            http://dl.google.com/linux/chrome/deb/ stable main" \
-            | sudo tee /etc/apt/sources.list.d/google-chrome.list
-          sudo apt-get update && sudo apt-get install -y google-chrome-stable
-
-      - name: Setup ChromeDriver
-        uses: nanasess/setup-chromedriver@v2
-
-      - name: Clean up Chrome temp directories
-        run: |
-          mkdir -p temp/chrome-data
-          rm -rf temp/chrome-data/*
-          echo "Chrome temporary directories cleaned up"
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
 
       - name: Generate Prisma client
         run: npm run prisma:generate
@@ -90,12 +75,6 @@ jobs:
         run: npm run metadata
         continue-on-error: false
         timeout-minutes: 30
-
-      - name: Clean up Chrome temp directories
-        if: always()
-        run: |
-          rm -rf temp/chrome-data/*
-          echo "Chrome temporary directories cleaned up"
 
       - name: Upload raw data as artifacts
         uses: actions/upload-artifact@v4

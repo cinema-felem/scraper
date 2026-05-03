@@ -1,5 +1,5 @@
-import { WebDriver } from 'selenium-webdriver'
-import { createChromeDriver, safeQuitDriver } from '../../../utils/selenium-config'
+import { Browser } from 'playwright'
+import { createPlaywrightSession, closePlaywrightSession } from '../../../utils/playwright-config'
 import { FilmhouseMovie, FilmhouseSession } from './types'
 
 const FILMHOUSE_SITE = 'https://filmhouse.sg'
@@ -64,72 +64,74 @@ export const fetchFilmsAndSessions = async (): Promise<{
   movies: FilmhouseMovie[]
   sessions: FilmhouseSession[]
 }> => {
-  let driver: WebDriver | null = null
+  let browser: Browser | null = null
   try {
-    driver = await createChromeDriver()
-    const d = driver
+    const { browser: b, page } = await createPlaywrightSession()
+    browser = b
 
-    await d.get(`${FILMHOUSE_SITE}/films/`)
-    await d.sleep(3000)
+    await page.goto(`${FILMHOUSE_SITE}/films/`)
+    await page.waitForTimeout(3000)
 
-    const rawFilms = await d.executeScript<RawFilmData[]>(`
-      var films = [];
+    const rawFilms = await page.evaluate<RawFilmData[]>(() => {
+      var films: any[] = []
       document.querySelectorAll('.jacro-event.movie-tabs').forEach(function(el) {
-        var filmLink = el.querySelector('a[href*="/film/"]');
-        var href = filmLink ? filmLink.href : '';
-        var urlMatch = href.match(/\\/film\\/(\\d+)\\/([^/]+)/);
-        var id = urlMatch ? urlMatch[1] : '';
-        var slug = urlMatch ? urlMatch[2] : '';
+        var filmLink = el.querySelector('a[href*="/film/"]')
+        var href = filmLink ? (filmLink as HTMLAnchorElement).href : ''
+        var urlMatch = href.match(/\/film\/(\d+)\/([^/]+)/)
+        var id = urlMatch ? urlMatch[1] : ''
+        var slug = urlMatch ? urlMatch[2] : ''
 
-        var title = (el.querySelector('.liveeventtitle') || {}).textContent || '';
-        title = title.trim();
+        var title = (el.querySelector('.liveeventtitle') || { textContent: '' }).textContent || ''
+        title = title.trim()
 
-        var spans = el.querySelectorAll('.running-time span');
-        var duration = 0, rating = '', genre = '';
+        var spans = el.querySelectorAll('.running-time span')
+        var duration = 0, rating = '', genre = ''
         spans.forEach(function(s) {
-          var t = s.textContent.trim();
-          var m = t.match(/(\\d+)mins/);
-          if (m) duration = parseInt(m[1]);
-          else if (t.startsWith('(')) rating = t.replace(/[()]/g, '').trim();
-          else if (!t.match(/^\\d{4}$/)) genre = t;
-        });
+          var t = s.textContent ? s.textContent.trim() : ''
+          var m = t.match(/(\d+)mins/)
+          if (m) duration = parseInt(m[1])
+          else if (t.startsWith('(')) rating = t.replace(/[()]/g, '').trim()
+          else if (!/^\d{4}$/.test(t)) genre = t
+        })
 
-        var posterImg = el.querySelector('.film_img img');
-        var posterUrl = posterImg ? (posterImg.src || '') : '';
+        var posterImg = el.querySelector('.film_img img')
+        var posterUrl = posterImg ? ((posterImg as HTMLImageElement).src || '') : ''
 
-        var langEl = null;
+        var language = ''
         el.querySelectorAll('em strong, strong em, em').forEach(function(e) {
-          if (!langEl && e.textContent.includes('In ')) langEl = e;
-        });
-        var language = langEl ? langEl.textContent.replace('In ', '').trim() : '';
+          if (!language && e.textContent && e.textContent.includes('In ')) {
+            language = e.textContent.replace('In ', '').trim()
+          }
+        })
 
-        var sessions = [];
-        var list = el.querySelector('ul.performance-list-items');
+        var sessions: any[] = []
+        var list = el.querySelector('ul.performance-list-items')
         if (list) {
-          var currentDate = '';
+          var currentDate = ''
           list.childNodes.forEach(function(node) {
-            if (node.nodeType !== 1) return;
-            if (node.classList && node.classList.contains('heading')) {
-              currentDate = node.textContent.trim();
-            } else if (node.tagName === 'LI') {
-              var a = node.querySelector('a.film_book_button');
-              if (!a) return;
-              var bookUrl = a.href || '';
-              var sessionIdMatch = bookUrl.match(/\\/booknow\\/(\\d+)/);
-              var sessionId = sessionIdMatch ? sessionIdMatch[1] : '';
-              var timeSpan = a.querySelector('span.time');
-              var time = timeSpan ? timeSpan.textContent.trim() : '';
-              var tagEl = node.querySelector('.movietag span.tag');
-              var format = tagEl ? tagEl.textContent.trim() : '2D';
-              sessions.push({ sessionId: sessionId, date: currentDate, time: time, format: format, bookUrl: bookUrl });
+            if (node.nodeType !== 1) return
+            var el = node as Element
+            if (el.classList && el.classList.contains('heading')) {
+              currentDate = el.textContent ? el.textContent.trim() : ''
+            } else if (el.tagName === 'LI') {
+              var a = el.querySelector('a.film_book_button')
+              if (!a) return
+              var bookUrl = (a as HTMLAnchorElement).href || ''
+              var sessionIdMatch = bookUrl.match(/\/booknow\/(\d+)/)
+              var sessionId = sessionIdMatch ? sessionIdMatch[1] : ''
+              var timeSpan = a.querySelector('span.time')
+              var time = timeSpan && timeSpan.textContent ? timeSpan.textContent.trim() : ''
+              var tagEl = el.querySelector('.movietag span.tag')
+              var format = tagEl && tagEl.textContent ? tagEl.textContent.trim() : '2D'
+              sessions.push({ sessionId: sessionId, date: currentDate, time: time, format: format, bookUrl: bookUrl })
             }
-          });
+          })
         }
 
-        films.push({ id: id, slug: slug, title: title, duration: duration, rating: rating, genre: genre, language: language, posterUrl: posterUrl, sessions: sessions });
-      });
-      return films;
-    `)
+        films.push({ id: id, slug: slug, title: title, duration: duration, rating: rating, genre: genre, language: language, posterUrl: posterUrl, sessions: sessions })
+      })
+      return films
+    })
 
     const movies: FilmhouseMovie[] = []
     const sessions: FilmhouseSession[] = []
@@ -169,6 +171,6 @@ export const fetchFilmsAndSessions = async (): Promise<{
 
     return { movies, sessions }
   } finally {
-    if (driver) await safeQuitDriver(driver)
+    if (browser) await closePlaywrightSession(browser)
   }
 }

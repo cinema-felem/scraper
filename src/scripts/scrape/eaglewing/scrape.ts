@@ -1,5 +1,5 @@
-import { WebDriver } from 'selenium-webdriver'
-import { createChromeDriver, safeQuitDriver } from '../../../utils/selenium-config'
+import { Browser } from 'playwright'
+import { createPlaywrightSession, closePlaywrightSession } from '../../../utils/playwright-config'
 import { EagleWingMovie, EagleWingSession, EagleWingShowtime } from './types'
 
 const BASE_URL = 'https://www.eaglewingscinematics.com.sg'
@@ -24,7 +24,7 @@ interface RawFilmListing {
 }
 
 /**
- * Scrapes all EagleWings movies and showtimes in a single Selenium session.
+ * Scrapes all EagleWings movies and showtimes in a single Playwright session.
  *
  * Flow:
  *  1. Navigate to /movies, extract CSRF token (meta tag) + XSRF token (cookie)
@@ -36,25 +36,23 @@ export const scrapeMoviesAndShowtimes = async (): Promise<{
   movies: EagleWingMovie[]
   showtimes: EagleWingShowtime[]
 }> => {
-  let driver: WebDriver | null = null
+  let browser: Browser | null = null
   try {
-    driver = await createChromeDriver()
-    const d = driver
+    const { browser: b, context, page } = await createPlaywrightSession()
+    browser = b
 
     // Step 1: get CSRF and XSRF tokens
-    await d.get(`${BASE_URL}/movies`)
-    await d.sleep(3000)
+    await page.goto(`${BASE_URL}/movies`)
+    await page.waitForTimeout(3000)
 
-    const csrfToken = await d.executeScript<string>(
-      `return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? ''`,
+    const csrfToken = await page.evaluate(
+      () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
     )
-    const cookies = await d.manage().getCookies()
-    const xsrfCookie = cookies.find((c: any) => c.name === 'XSRF-TOKEN')
+    const cookies = await context.cookies()
+    const xsrfCookie = cookies.find(c => c.name === 'XSRF-TOKEN')
     const xsrfToken = xsrfCookie ? decodeURIComponent(xsrfCookie.value) : ''
     // Build cookie header string to include laravel_session and XSRF-TOKEN for Node fetch
-    const cookieString = cookies
-      .map((c: any) => `${c.name}=${c.value}`)
-      .join('; ')
+    const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ')
 
     if (!csrfToken) throw new Error('EagleWings: could not read CSRF token from meta tag')
 
@@ -79,15 +77,11 @@ export const scrapeMoviesAndShowtimes = async (): Promise<{
 
       // Navigate to movie page to get ScheduledFilmId from window.Vars
       try {
-        await d.get(`${BASE_URL}/movie/${slug}/${filmCode}`)
-        await d.sleep(2000)
+        await page.goto(`${BASE_URL}/movie/${slug}/${filmCode}`)
+        await page.waitForTimeout(2000)
 
-        const scheduledFilmId = await d.executeScript<string>(
-          `return window.Vars?.ScheduledFilmId ?? ''`,
-        )
-        const cinemaId = await d.executeScript<string>(
-          `return window.Vars?.CinemaId ?? '0000000001'`,
-        )
+        const scheduledFilmId = await page.evaluate(() => (window as any).Vars?.ScheduledFilmId ?? '')
+        const cinemaId = await page.evaluate(() => (window as any).Vars?.CinemaId ?? '0000000001')
 
         if (!scheduledFilmId) continue
 
@@ -167,6 +161,6 @@ export const scrapeMoviesAndShowtimes = async (): Promise<{
 
     return { movies, showtimes }
   } finally {
-    if (driver) await safeQuitDriver(driver)
+    if (browser) await closePlaywrightSession(browser)
   }
 }
