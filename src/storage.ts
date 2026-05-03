@@ -8,6 +8,11 @@ import { removeOrphanedMovies, executeUpdates } from './scripts/storage/updates'
 import logger, { initSentry, DataCountMetrics } from './utils/logger'
 import * as Sentry from '@sentry/node'
 import { PrismaClient } from '@prisma/client'
+import {
+  StandardCinema,
+  StandardMovie,
+  StandardShowtime,
+} from './types/standard'
 /**
  * Interface for storage operation results
  */
@@ -67,7 +72,7 @@ const steps: StorageStep[] = process.argv[2]
   : ALL_STEPS
 
 // Read merged data with error handling
-let intermediateObject: any = { movies: [], cinemas: [], showtimes: [] }
+let intermediateObject: { movies: StandardMovie[]; cinemas: StandardCinema[]; showtimes: StandardShowtime[] } = { movies: [], cinemas: [], showtimes: [] }
 try {
   const intermediateDataPath = path.join('data/intermediate', 'merge.json')
   const intermediateData = readFileSync(intermediateDataPath, 'utf8')
@@ -301,10 +306,10 @@ async function main(): Promise<void> {
 
         // Get distribution of unique movie and cinema IDs in showtimes
         const uniqueMovieIds = new Set(
-          intermediateObject.showtimes?.map((s: any) => s.filmId) || [],
+          intermediateObject.showtimes?.map(s => s.filmId) || [],
         )
         const uniqueCinemaIds = new Set(
-          intermediateObject.showtimes?.map((s: any) => s.cinemaId) || [],
+          intermediateObject.showtimes?.map(s => s.cinemaId) || [],
         )
 
         // Insert showtimes into database

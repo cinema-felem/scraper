@@ -37,7 +37,7 @@ export interface DataCountMetrics {
   cinemaCount?: number;
   showtimeCount?: number;
   source?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 class Logger {
