@@ -1,11 +1,11 @@
 import { scrapeShowtimes } from './scrape'
 import { OldhamCinema, OldhamMovie, OldhamShowtime } from './types'
 
-let cached: { movies: OldhamMovie[]; showtimes: OldhamShowtime[] } | null = null
+let inFlight: Promise<{ movies: OldhamMovie[]; showtimes: OldhamShowtime[] }> | null = null
 
-const getData = async () => {
-  if (!cached) cached = await scrapeShowtimes()
-  return cached
+const getData = () => {
+  if (!inFlight) inFlight = scrapeShowtimes()
+  return inFlight
 }
 
 export const fetchCinemas = async (): Promise<OldhamCinema[]> => [

@@ -25,8 +25,14 @@ const parseDateTimeStr = (raw: string): { date: string; time: string; endTime: s
   }
 }
 
-const slugify = (s: string): string =>
-  s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
+const slugify = (s: string): string => {
+  // Normalise Unicode letters so CJK/accented titles produce a meaningful slug
+  const ascii = s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const slug = ascii.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
+  if (slug) return slug
+  // Fallback for titles that are entirely non-Latin (e.g. pure CJK): stable base64 id
+  return Buffer.from(s.slice(0, 30)).toString('base64url').slice(0, 60)
+}
 
 interface RawEvent {
   title: string

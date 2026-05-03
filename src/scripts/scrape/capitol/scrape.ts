@@ -76,7 +76,6 @@ export const fetchCapitolFilms = async (): Promise<{ movies: CapitolMovie[]; sho
 
     if (!startDate) continue
 
-    const movieId = `capitol:${event.alias}`
     movies.push({
       id: event.alias,
       title: event.title.trim(),

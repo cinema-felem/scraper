@@ -1,9 +1,8 @@
-import { StandardCinema, StandardMovie, StandardShowtime } from '@/types/standard'
+import { StandardMovie, StandardShowtime } from '@/types/standard'
 import { toSingaporeUnixMsFrom12h } from '@/utils/time'
 import { makeTransformCinemas } from './factory'
 import { BaseTransformer } from './base'
 import logger from '@/utils/logger'
-import { cleanString } from '../../text'
 
 interface RawOldhamCinema {
   id: string

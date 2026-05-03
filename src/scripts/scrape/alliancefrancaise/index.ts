@@ -1,11 +1,11 @@
 import { scrapeShowtimes } from './scrape'
 import { AFCinema, AFMovie, AFShowtime } from './types'
 
-let cached: { movies: AFMovie[]; showtimes: AFShowtime[] } | null = null
+let inFlight: Promise<{ movies: AFMovie[]; showtimes: AFShowtime[] }> | null = null
 
-const getData = async () => {
-  if (!cached) cached = await scrapeShowtimes()
-  return cached
+const getData = () => {
+  if (!inFlight) inFlight = scrapeShowtimes()
+  return inFlight
 }
 
 export const fetchCinemas = async (): Promise<AFCinema[]> => [

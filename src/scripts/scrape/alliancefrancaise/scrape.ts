@@ -19,7 +19,8 @@ const parseDateTimeStr = (raw: string): { date: string; time: string } => {
 
   const now = new Date()
   let year = now.getFullYear()
-  if (parseInt(month) < now.getMonth() - 1) year++
+  // now.getMonth() is 0-based; month is 1-based — compare like-for-like
+  if (parseInt(month, 10) < now.getMonth() + 1) year++
 
   return {
     date: `${year}-${month}-${day}`,
