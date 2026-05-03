@@ -16,20 +16,21 @@ export const scrapeShowtimes = async (): Promise<{
   let driver: WebDriver | null = null
   try {
     driver = await createChromeDriver()
-    await driver.get(`${SFS_SITE}/screenings`)
+    const d = driver
+    await d.get(`${SFS_SITE}/screenings`)
 
-    await driver.wait(
+    await d.wait(
       until.elementLocated(By.css('article, .screening, .event, .movie, main')),
       15000,
     )
 
-    const pageSource = await driver.getPageSource()
+    const pageSource = await d.getPageSource()
     return parseScreeningsPage(pageSource)
   } catch (err) {
     console.error('SFS: failed to scrape screenings page:', err)
     return { movies: [], showtimes: [] }
   } finally {
-    await safeQuitDriver(driver)
+    if (driver) await safeQuitDriver(driver)
   }
 }
 

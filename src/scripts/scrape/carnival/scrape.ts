@@ -24,8 +24,9 @@ export const getAuthToken = async (): Promise<string> => {
   let driver: WebDriver | null = null
   try {
     driver = await createChromeDriver()
+    const d = driver
 
-    const cdp = await (driver as any).createCDPConnection('page')
+    const cdp = await (d as any).createCDPConnection('page')
     await cdp.execute('Page.addScriptToEvaluateOnNewDocument', {
       source: `
         window.__carnivalToken = null;
@@ -43,10 +44,10 @@ export const getAuthToken = async (): Promise<string> => {
       `,
     })
 
-    await driver.get('https://carnivalcinemas.sg/')
+    await d.get('https://carnivalcinemas.sg/')
 
-    const token = await driver.wait(
-      async () => driver.executeScript<string | null>('return window.__carnivalToken'),
+    const token = await d.wait(
+      async () => d.executeScript<string | null>('return window.__carnivalToken'),
       20000,
       'Timed out waiting for Carnival auth token',
     )
@@ -54,7 +55,7 @@ export const getAuthToken = async (): Promise<string> => {
     if (!token) throw new Error('Failed to capture Carnival auth token')
     return token
   } finally {
-    await safeQuitDriver(driver)
+    if (driver) await safeQuitDriver(driver)
   }
 }
 

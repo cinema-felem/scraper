@@ -12,8 +12,9 @@ export const getTokens = async (): Promise<{ csrfToken: string; xsrfToken: strin
   let driver: WebDriver | null = null
   try {
     driver = await createChromeDriver()
+    const d = driver
 
-    const cdp = await (driver as any).createCDPConnection('page')
+    const cdp = await (d as any).createCDPConnection('page')
     await cdp.execute('Page.addScriptToEvaluateOnNewDocument', {
       source: `
         window.__eagleTokens = { csrf: null, xsrf: null };
@@ -35,11 +36,11 @@ export const getTokens = async (): Promise<{ csrfToken: string; xsrfToken: strin
       `,
     })
 
-    await driver.get(`${BASE_URL}/movies`)
+    await d.get(`${BASE_URL}/movies`)
 
-    const tokens = await driver.wait(
+    const tokens = await d.wait(
       async () => {
-        const result = await driver.executeScript<{ csrf: string | null; xsrf: string | null }>(
+        const result = await d.executeScript<{ csrf: string | null; xsrf: string | null }>(
           'return window.__eagleTokens',
         )
         return result?.csrf ? result : null
@@ -51,7 +52,7 @@ export const getTokens = async (): Promise<{ csrfToken: string; xsrfToken: strin
     if (!tokens?.csrf) throw new Error('Failed to capture EagleWings CSRF token')
     return { csrfToken: tokens.csrf, xsrfToken: tokens.xsrf ?? '' }
   } finally {
-    await safeQuitDriver(driver)
+    if (driver) await safeQuitDriver(driver)
   }
 }
 

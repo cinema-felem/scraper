@@ -13,8 +13,9 @@ export const getVeeziToken = async (): Promise<string> => {
   let driver: WebDriver | null = null
   try {
     driver = await createChromeDriver()
+    const d = driver
 
-    const cdp = await (driver as any).createCDPConnection('page')
+    const cdp = await (d as any).createCDPConnection('page')
     await cdp.execute('Page.addScriptToEvaluateOnNewDocument', {
       source: `
         window.__veeziToken = null;
@@ -45,10 +46,10 @@ export const getVeeziToken = async (): Promise<string> => {
       `,
     })
 
-    await driver.get(FILMHOUSE_SITE)
+    await d.get(FILMHOUSE_SITE)
 
-    const token = await driver.wait(
-      async () => driver.executeScript<string | null>('return window.__veeziToken'),
+    const token = await d.wait(
+      async () => d.executeScript<string | null>('return window.__veeziToken'),
       25000,
       'Timed out waiting for Veezi access token',
     )
@@ -56,7 +57,7 @@ export const getVeeziToken = async (): Promise<string> => {
     if (!token) throw new Error('Failed to capture Veezi access token from Filmhouse')
     return token
   } finally {
-    await safeQuitDriver(driver)
+    if (driver) await safeQuitDriver(driver)
   }
 }
 

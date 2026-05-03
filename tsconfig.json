@@ -1,7 +1,8 @@
 // tsconfig.json
 {
   "compilerOptions": {
-    "outDir": "dist", // where to put the compiled JS files
+    "outDir": "dist",
+    "rootDir": "src",
     "target": "ES2023", // which level of JS support to target
     "module": "CommonJS", // which system for the program AMD, UMD, System, CommonJS
     "esModuleInterop": true,
@@ -10,6 +11,8 @@
 
     // Recommended: Compiler complains about expressions implicitly typed as 'any'
     "noImplicitAny": true,
+    "noEmitOnError": false,
+    "types": ["node", "selenium-webdriver", "natural"],
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
