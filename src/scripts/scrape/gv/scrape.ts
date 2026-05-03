@@ -41,7 +41,7 @@ export const fetchComingSoonMoviesList = (): Promise<MovieResponse> =>
   }).then(res => res.json())
 
 export const fetchAdvancedSalesMoviesList = (): Promise<MovieResponse> =>
-  fetch('https://www.gv.com.sg/.gv-api/comingsoon', {
+  fetch('https://www.gv.com.sg/.gv-api/advancesales', {
     headers: {
       accept: 'application/json, text/plain, */*',
       'accept-language': 'en-US,en;q=0.9',

@@ -67,20 +67,20 @@ export const insertMovies = async (movies: StandardMovie[]) => {
       let existingMovieId: string | null = null
       
       // Check if movie ID already exists
-      if (existingMovieMap.has(movie.id)) {
+      if (movie.id !== undefined && existingMovieMap.has(movie.id)) {
         existingMovieId = movie.id
       }
       
       // Check if movie title already exists
       else if (movie.title && existingTitleMap.has(movie.title.toLowerCase())) {
-        existingMovieId = existingTitleMap.get(movie.title.toLowerCase())
+        existingMovieId = existingTitleMap.get(movie.title.toLowerCase()) ?? null
       }
       
       // Check if any title variation already exists
       else if (movie.titleVariations && Array.isArray(movie.titleVariations)) {
         for (const variation of movie.titleVariations) {
           if (variation && existingTitleMap.has(variation.toLowerCase())) {
-            existingMovieId = existingTitleMap.get(variation.toLowerCase())
+            existingMovieId = existingTitleMap.get(variation.toLowerCase()) ?? null
             break
           }
         }
@@ -90,7 +90,7 @@ export const insertMovies = async (movies: StandardMovie[]) => {
       if (!existingMovieId && movie.movieIds && Array.isArray(movie.movieIds)) {
         for (const id of movie.movieIds) {
           if (existingMovieIdMap.has(id)) {
-            existingMovieId = existingMovieIdMap.get(id)
+            existingMovieId = existingMovieIdMap.get(id) ?? null
             break
           }
         }

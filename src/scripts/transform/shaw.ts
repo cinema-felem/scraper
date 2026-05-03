@@ -292,8 +292,9 @@ const mergeMovieIds = (
   const filteredShowtimeArray = showtimeArray.flatMap(
     (showtime: StandardShowtime): StandardShowtime | [] => {
       const { filmId, details } = showtime
-      const isParent = movieSet[details.movieTitle] === filmId
-      showtime.filmId = isParent ? filmId : movieSet[details.movieTitle]
+      const movieTitle = details.movieTitle as string
+      const isParent = movieSet[movieTitle] === filmId
+      showtime.filmId = isParent ? filmId : movieSet[movieTitle]
       if (!showtime.filmId) {
         missingFilmId.add(filmId)
         return []

@@ -171,7 +171,7 @@ const mapMovies = (moviesArray: GvRawMovie[]): MappedMovies[] => {
         id: filmCd,
         details: {
           subtitle: subTitles,
-          formatGroupParentId,
+          formatGroupParentId: formatGroupParentId ?? '',
           freeValidity,
           annualPassValidity,
           eDealsValidity,
@@ -308,7 +308,7 @@ const transformShowtimes = (
   if (missingFilmCds.size > 0)
     logger.warn(`filmCd ${Array.from(missingFilmCds)} not found`)
 
-  return transformedShowtimeArray
+  return transformedShowtimeArray.filter((s): s is TransformedShowtime => s.cinema !== undefined)
 }
 
 const mapCinemas = (cinemasArray: GvRawCinema[]): ShawMappedCinema[] => {

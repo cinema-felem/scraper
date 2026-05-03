@@ -1,71 +1,52 @@
-import {
-  fetchAdvanceMoviesList,
-  fetchCinemaList,
-  fetchComingMoviesList,
-  fetchFilmFestival,
-  fetchNowShowingMoviesList,
-  getDateShowtimes,
-} from './scrape'
+import { fetchSelectors, fetchCinemaList, getDateShowtimes } from './scrape'
 import { Cinema, Movie, MovieShowtime, MovieShowtimeRaw } from './types'
-import { partition, uniqByKeepFirst } from './utils'
 
 export const fetchMovies = async (): Promise<Movie[]> => {
-  const nowShowingMoviesList: Movie[] = await fetchNowShowingMoviesList()
-  const advanceMoviesList: Movie[] = await fetchAdvanceMoviesList()
-  const comingMoviesList: Movie[] = await fetchComingMoviesList()
-
-  let [nowShowingMovies, filmFestivals] = partition(
-    nowShowingMoviesList,
-    movie => movie.code === null,
-  )
-
-  for (const filmFestival of filmFestivals) {
-    const filmFestivalMovies = await fetchFilmFestival(filmFestival.code)
-    nowShowingMovies = nowShowingMovies.concat(filmFestivalMovies)
-  }
-
-  const moviesList = [
-    ...nowShowingMovies,
-    ...advanceMoviesList,
-    ...comingMoviesList,
-  ]
-
-  return uniqByKeepFirst(moviesList, movie => movie.movieReleaseId)
+  const selectors = await fetchSelectors()
+  const movieItems: any[] = selectors.filter((s: any) => s.type === 1)
+  return movieItems.map((item: any) => ({
+    movieReleaseId: Number(item.code),
+    primaryTitle: item.name,
+    formatCode: '',
+    isLimited: false,
+    isNewRelease: false,
+    isExclusive: false,
+    isSneakPreview: false,
+    isAdvanceSales: false,
+    releaseDate: new Date(),
+    duration: 0,
+    posterUrl: '',
+    synopsisShort: '',
+    classifyCode: '',
+    adviceName: '',
+    code: null,
+  }))
 }
 
-export const fetchCinemas = async (): Promise<Cinema[]> => {
-  return await fetchCinemaList()
-}
+export const fetchCinemas = async (): Promise<Cinema[]> => fetchCinemaList()
 
 const flattenShowtimes = (
   exist: MovieShowtime[],
   newRecords: MovieShowtimeRaw[],
 ) => {
-  if (!(newRecords.length > 0)) {
-    return exist
-  }
+  if (!newRecords?.length) return exist
   for (const cinemaMovieShowtimes of newRecords) {
     const { showTimes: movieTimeslots, ...movieInfo } = cinemaMovieShowtimes
     for (const timeslot of movieTimeslots) {
-      const movieTimeslotContext: MovieShowtime = {
-        ...movieInfo,
-        ...timeslot,
-      }
-      exist.push(movieTimeslotContext)
+      exist.push({ ...movieInfo, ...timeslot })
     }
   }
   return exist
 }
 
-export const fetchShowtimes = async () => {
+export const fetchShowtimes = async (): Promise<MovieShowtime[]> => {
   const days = 7
   const queryDate = new Date()
   queryDate.setHours(0, 0, 0, 0)
   let showtimes: MovieShowtime[] = []
 
   for (let i = 0; i < days; i++) {
-    const dayShowtimeObject: MovieShowtimeRaw[] =
-      await getDateShowtimes(queryDate)
+    const dayShowtimeObject: MovieShowtimeRaw[] = await getDateShowtimes(queryDate)
     showtimes = flattenShowtimes(showtimes, dayShowtimeObject)
     queryDate.setDate(queryDate.getDate() + 1)
   }

@@ -4,6 +4,10 @@ import { EventEmitter } from 'events'
 import logger, { initSentry, DataCountMetrics } from './utils/logger'
 import * as GV from './scripts/scrape/gv'
 import * as Shaw from './scripts/scrape/shaw'
+import * as Carnival from './scripts/scrape/carnival'
+import * as EagleWing from './scripts/scrape/eaglewing'
+import * as Filmhouse from './scripts/scrape/filmhouse'
+import * as SFS from './scripts/scrape/sfs'
 
 // Increase event listener limit
 EventEmitter.defaultMaxListeners = 20
@@ -22,10 +26,14 @@ initSentry({
 /**
  * Define available cinema chains
  */
-type CinemaChain = 'gv' | 'shaw'
+type CinemaChain = 'gv' | 'shaw' | 'carnival' | 'eaglewing' | 'filmhouse' | 'sfs'
 const DEFAULT_CINEMA_CHAINS: CinemaChain[] = [
   'gv',
   'shaw',
+  'carnival',
+  'eaglewing',
+  'filmhouse',
+  'sfs',
 ]
 
 /**
@@ -63,6 +71,10 @@ async function scrapeChain(cinemaChain: CinemaChain): Promise<void> {
     const scraperModules: Record<CinemaChain, any> = {
       gv: GV,
       shaw: Shaw,
+      carnival: Carnival,
+      eaglewing: EagleWing,
+      filmhouse: Filmhouse,
+      sfs: SFS,
     };
 
     // Get the appropriate scraper module

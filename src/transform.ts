@@ -32,7 +32,7 @@ interface CinemaData {
 }
 
 // Configure cinema chains to process
-const DEFAULT_CINEMA_CHAINS = ['gv', 'shaw']
+const DEFAULT_CINEMA_CHAINS = ['gv', 'shaw', 'carnival', 'eaglewing', 'filmhouse', 'sfs']
 let cinemaChains = [...DEFAULT_CINEMA_CHAINS]
 let singleChainMode = false
 

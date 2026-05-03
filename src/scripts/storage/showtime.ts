@@ -1,5 +1,5 @@
 import { StandardShowtime } from '@/types/standard'
-import { PrismaClient, Showtime, Movie } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
 import { retrieveMovies } from './movie'
 
 const prisma = new PrismaClient()
@@ -88,7 +88,7 @@ export const insertShowtimes = async (showtimes: StandardShowtime[]) => {
       link,
       ticketType: ticketType?.type ? ticketType?.type : 'Standard',
       movieFormat,
-      details,
+      details: details as Prisma.InputJsonValue,
     }
 
     validShowtimesData.push(showtimeData) // Add the valid data to our array
