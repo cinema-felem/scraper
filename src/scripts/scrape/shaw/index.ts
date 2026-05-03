@@ -1,4 +1,5 @@
 import {
+  getShawCookies,
   fetchAdvanceMoviesList,
   fetchCinemaList,
   fetchComingMoviesList,
@@ -10,9 +11,10 @@ import { Cinema, Movie, MovieShowtime, MovieShowtimeRaw } from './types'
 import { partition, uniqByKeepFirst } from './utils'
 
 export const fetchMovies = async (): Promise<Movie[]> => {
-  const nowShowingMoviesList: Movie[] = await fetchNowShowingMoviesList()
-  const advanceMoviesList: Movie[] = await fetchAdvanceMoviesList()
-  const comingMoviesList: Movie[] = await fetchComingMoviesList()
+  const cookies = await getShawCookies()
+  const nowShowingMoviesList: Movie[] = await fetchNowShowingMoviesList(cookies)
+  const advanceMoviesList: Movie[] = await fetchAdvanceMoviesList(cookies)
+  const comingMoviesList: Movie[] = await fetchComingMoviesList(cookies)
 
   let [nowShowingMovies, filmFestivals] = partition(
     nowShowingMoviesList,
@@ -20,7 +22,7 @@ export const fetchMovies = async (): Promise<Movie[]> => {
   )
 
   for (const filmFestival of filmFestivals) {
-    const filmFestivalMovies = await fetchFilmFestival(filmFestival.code)
+    const filmFestivalMovies = await fetchFilmFestival(filmFestival.code, cookies)
     nowShowingMovies = nowShowingMovies.concat(filmFestivalMovies)
   }
 
@@ -34,7 +36,8 @@ export const fetchMovies = async (): Promise<Movie[]> => {
 }
 
 export const fetchCinemas = async (): Promise<Cinema[]> => {
-  return await fetchCinemaList()
+  const cookies = await getShawCookies()
+  return fetchCinemaList(cookies)
 }
 
 const flattenShowtimes = (
@@ -58,14 +61,14 @@ const flattenShowtimes = (
 }
 
 export const fetchShowtimes = async () => {
+  const cookies = await getShawCookies()
   const days = 7
   const queryDate = new Date()
   queryDate.setHours(0, 0, 0, 0)
   let showtimes: MovieShowtime[] = []
 
   for (let i = 0; i < days; i++) {
-    const dayShowtimeObject: MovieShowtimeRaw[] =
-      await getDateShowtimes(queryDate)
+    const dayShowtimeObject: MovieShowtimeRaw[] = await getDateShowtimes(queryDate, cookies)
     showtimes = flattenShowtimes(showtimes, dayShowtimeObject)
     queryDate.setDate(queryDate.getDate() + 1)
   }
