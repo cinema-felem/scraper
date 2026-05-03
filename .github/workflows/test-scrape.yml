@@ -1,0 +1,111 @@
+name: Test Scrape
+
+on:
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: 'Cinema chain to test (leave empty to test all)'
+        required: false
+        default: ''
+
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/scripts/scrape/**'
+      - 'src/scripts/transform/**'
+      - 'src/scrape.ts'
+      - 'src/transform.ts'
+      - 'tsconfig.json'
+      - 'package*.json'
+
+jobs:
+  test-scrape:
+    name: Test scrape (${{ matrix.chain }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        chain:
+          - gv
+          - shaw
+          - carnival
+          - eaglewing
+          - filmhouse
+          - sfs
+
+    steps:
+      - name: Skip if chain filter set and doesn't match
+        if: ${{ github.event.inputs.chain != '' && github.event.inputs.chain != matrix.chain }}
+        run: |
+          echo "Skipping ${{ matrix.chain }} (filter: ${{ github.event.inputs.chain }})"
+          exit 0
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Setup ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build TypeScript
+        run: npx tsc && npx tsc-alias
+
+      - name: Scrape ${{ matrix.chain }}
+        run: node dist/scrape.js ${{ matrix.chain }}
+        timeout-minutes: 10
+
+      - name: Summarise results
+        if: always()
+        run: |
+          FILE="data/raw/${{ matrix.chain }}.json"
+          if [ ! -f "$FILE" ]; then
+            echo "❌ No output file found for ${{ matrix.chain }}"
+            exit 1
+          fi
+
+          MOVIES=$(node -e "const d=require('./$FILE'); console.log(d.movies?.length ?? 0)")
+          CINEMAS=$(node -e "const d=require('./$FILE'); console.log(d.cinemas?.length ?? 0)")
+          SHOWTIMES=$(node -e "const d=require('./$FILE'); console.log(d.showtimes?.length ?? 0)")
+
+          echo "### ${{ matrix.chain }} scrape results" >> $GITHUB_STEP_SUMMARY
+          echo "| Entity | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Movies | $MOVIES |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cinemas | $CINEMAS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Showtimes | $SHOWTIMES |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$MOVIES" -eq 0 ] && [ "$SHOWTIMES" -eq 0 ]; then
+            echo "⚠️  No movies or showtimes returned" >> $GITHUB_STEP_SUMMARY
+            echo "::warning::${{ matrix.chain }}: 0 movies and 0 showtimes — possible scraper failure"
+          else
+            echo "✅ Data returned" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload raw data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: raw-${{ matrix.chain }}
+          path: data/raw/${{ matrix.chain }}.json
+          if-no-files-found: warn
+          retention-days: 3
