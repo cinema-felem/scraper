@@ -22,6 +22,7 @@ model Cinema {
   source         Json?
   showtimes      Showtime[]
 
+  @@index([searchableName])
   @@schema("public")
 }
 
@@ -90,6 +91,9 @@ model Showtime {
   cinema        Cinema   @relation(fields: [cinemaId], references: [id])
   film          Movie    @relation(fields: [filmId], references: [id])
 
+  @@index([cinemaId, unixTime])
+  @@index([filmId, unixTime])
+  @@index([unixTime])
   @@schema("public")
 }
 

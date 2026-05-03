@@ -3,7 +3,10 @@ import {
   StandardCinema,
   StandardShowtime,
 } from '@/types/standard'
-import { removeMovieDetails, getEditDistance, cleanString } from '../../text'
+import { getEditDistance, cleanString } from '../../text'
+import { toSingaporeUnixMs } from '../../utils/time'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { default: logger } = require('../../utils/logger')
 
 interface GvRawCinema {
   id: string
@@ -106,7 +109,7 @@ const findFormatParentId = (
     movie => movie.formatGroupParent && movie.formatGroupId === formatGroupId,
   )
   if (!formatGroupParentObject?.filmCd)
-    console.log(`formatGroupId ${formatGroupId} not found`)
+    logger.warn(`formatGroupId ${formatGroupId} not found`)
   return formatGroupParentObject?.filmCd
 }
 
@@ -153,13 +156,6 @@ const mapMovies = (moviesArray: GvRawMovie[]): MappedMovies[] => {
     const eDealsValidity = promoValidity.indexOf('^') === -1
 
     const cleanedFilmTitle = filmTitle
-    // removeMovieDetails(filmTitle, raw => {
-    //   let text = structuredClone(raw)
-    //   text = text.replace('*', '')
-    //   text = text.replace('+', '')
-    //   text = text.replace('^', '')
-    //   return text
-    // })
 
     const formatGroupParentId = !formatGroupParent
       ? findFormatParentId(moviesArray, formatGroupId)
@@ -188,9 +184,9 @@ const mapMovies = (moviesArray: GvRawMovie[]): MappedMovies[] => {
 }
 
 function parseTo24Hour(time12: string) {
-  const [full, hours, minutes, period] = time12.match(
-    /(\d{1,2}):(\d{2})(AM|PM)/,
-  )
+  const match = time12.match(/(\d{1,2}):(\d{2})(AM|PM)/)
+  if (!match) throw new Error(`Invalid 12-hour time: ${time12}`)
+  const [, hours, minutes, period] = match
   const hour = parseInt(hours)
   if (period === 'PM' && hour !== 12) {
     return `${hour + 12}${minutes}`
@@ -220,7 +216,7 @@ const mapShowtimes = (showtimeArray: TransformedShowtime[]) => {
     if (!movie) return []
     const unixTime = getUnixDate(showDate, time24, time12)
     if (!unixTime)
-      console.log(
+      logger.warn(
         `showDate ${showDate} time24 ${time24}  time12 ${time12} not found`,
       )
     const id = `${cinemaId}/${filmCd}/${showDate}/${time24}/${hall}`
@@ -271,12 +267,11 @@ const getUnixDate = (
   time12: string,
 ): number => {
   if (!is24HourTime(time24)) time24 = parseTo24Hour(time12)
-  const dateArray = showDate.split('-')
-  const timeString =
-    time24.substring(0, 2) + ':' + time24.substring(2, 4) + ':00'
-  const dateTime = `${dateArray[2]}-${dateArray[1]}-${dateArray[0]}T${timeString}+08:00`
-  const jsDate = new Date(dateTime)
-  return jsDate.getTime()
+  // showDate is DD-MM-YYYY; reverse to YYYY-MM-DD for toSingaporeUnixMs
+  const [dd, mm, yyyy] = showDate.split('-')
+  const isoDate = `${yyyy}-${mm}-${dd}`
+  const hhmm = time24.substring(0, 2) + ':' + time24.substring(2, 4)
+  return toSingaporeUnixMs(isoDate, hhmm)
 }
 
 type TransformedShowtime = GvRawShowtime & {
@@ -309,9 +304,9 @@ const transformShowtimes = (
   })
 
   if (missingCinemaIds.size > 0)
-    console.log(`cinemaId ${Array.from(missingCinemaIds)} not found`)
+    logger.warn(`cinemaId ${Array.from(missingCinemaIds)} not found`)
   if (missingFilmCds.size > 0)
-    console.log(`filmCd ${Array.from(missingFilmCds)} not found`)
+    logger.warn(`filmCd ${Array.from(missingFilmCds)} not found`)
 
   return transformedShowtimeArray
 }
@@ -429,6 +424,4 @@ const standardiseCinemaChain = (cinemaChainObject: {
   }
 }
 
-module.exports = {
-  standardiseCinemaChain,
-}
+export { standardiseCinemaChain }

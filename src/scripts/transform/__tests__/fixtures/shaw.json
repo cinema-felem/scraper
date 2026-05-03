@@ -1,0 +1,52 @@
+{
+  "cinemas": [
+    {
+      "id": 1,
+      "code": "LUM",
+      "name": "Shaw Lido",
+      "brands": 1,
+      "address": "Shaw Lido, Orchard",
+      "poster": ""
+    }
+  ],
+  "movies": [
+    {
+      "movieReleaseId": 1001,
+      "primaryTitle": "Test Shaw Movie",
+      "releaseDate": "2025-05-01",
+      "isLimited": false,
+      "isNewRelease": true,
+      "isExclusive": false,
+      "isSneakPreview": false,
+      "isAdvanceSales": false,
+      "duration": 110,
+      "posterUrl": "",
+      "formatCode": "DGSD"
+    }
+  ],
+  "showtimes": [
+    {
+      "movieId": 500,
+      "movieReleaseId": 1001,
+      "primaryTitle": "Test Shaw Movie",
+      "posterUrl": "",
+      "duration": 110,
+      "classifyCode": "PG",
+      "restrictionCode": "NR",
+      "movieBrand": "DGTL",
+      "performanceId": 9001,
+      "displayDate": "2025-05-10",
+      "displayTime": "02:00 PM",
+      "locationId": 1,
+      "locationVenueId": 10,
+      "locationVenueName": "Shaw Lido - Hall 1",
+      "seatingStatus": "Available",
+      "isMidnight": false,
+      "locationVenueBrandCode": "DGTL",
+      "formatCode": "DGSD",
+      "subtitleCode": "NOSB",
+      "brandCode": "DGTL",
+      "isDtsx": false
+    }
+  ]
+}
