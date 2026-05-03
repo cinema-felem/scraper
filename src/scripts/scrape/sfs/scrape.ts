@@ -34,7 +34,6 @@ const parseDateTime = (day: string, monthStr: string, timeStr: string): { date: 
   if (period === 'pm' && hours !== 12) hours += 12
   if (period === 'am' && hours === 12) hours = 0
 
-  const time = `${String(hours).padStart(2, '0')}:${mins}`
   return { date, time: `${hours % 12 || 12}:${mins} ${period.toUpperCase()}` }
 }
 
