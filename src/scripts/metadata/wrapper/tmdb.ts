@@ -186,7 +186,7 @@ export type ProcessedMovie = BaseMovie & {
   overview: string
   external_ids: MovieExternalIds
   recommendations: string
-  streaming: CountryWatchProvider
+  streaming: CountryWatchProvider | undefined
 }
 
 export type MovieRatings = {
@@ -377,7 +377,7 @@ const getMovieReleaseDate = (tmdbMovie: TMDBMovie): Partial<ReleaseDate> => {
   return limitedTheatrical
 }
 
-const getMovieStreaming = (tmdbMovie: TMDBMovie): CountryWatchProvider => {
+const getMovieStreaming = (tmdbMovie: TMDBMovie): CountryWatchProvider | undefined => {
   if (!tmdbMovie?.['watch/providers']?.results?.SG) return
   const sgReleases = tmdbMovie?.['watch/providers']?.results?.SG
   return sgReleases

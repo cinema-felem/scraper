@@ -55,35 +55,6 @@ const merged: CinemaData = {
 mkdirSync('data/intermediate/', { recursive: true })
 mkdirSync('data/permutation/', { recursive: true })
 
-// const generatePermutations = everything => {
-//   const subObject = ['movies', 'showtimes', 'cinemas']
-//   const finalObject = {}
-
-//   const generatePermutationsResult = showtimeArray => {
-//     const attributesSetObject = {}
-
-//     for (const showtime of showtimeArray) {
-//       Object.keys(showtime).forEach(key => {
-//         if (typeof attributesSetObject[key] === 'undefined') {
-//           attributesSetObject[key] = new Set()
-//         }
-//         attributesSetObject[key].add(showtime[key])
-//       })
-//     }
-
-//     const attributesArrayObject = {}
-//     Object.keys(attributesSetObject).forEach(key => {
-//       attributesArrayObject[key] = Array.from(attributesSetObject[key])
-//     })
-
-//     return attributesArrayObject
-//   }
-//   for (const sub of subObject) {
-//     finalObject[sub] = generatePermutationsResult(everything[sub])
-//   }
-//   return finalObject
-// }
-
 /**
  * Process each cinema chain's data
  */

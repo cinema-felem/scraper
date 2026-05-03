@@ -11,8 +11,12 @@
 
     // Recommended: Compiler complains about expressions implicitly typed as 'any'
     "noImplicitAny": true,
-    "noEmitOnError": false,
-    "types": ["node", "selenium-webdriver", "natural"],
+    "noEmitOnError": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "resolveJsonModule": true,
+    "types": ["node", "selenium-webdriver", "natural", "mocha"],
     "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {

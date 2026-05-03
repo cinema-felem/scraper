@@ -21,7 +21,7 @@ export const lookupRatingsOnTrakt = async (
     headers: {
       'Content-Type': 'application/json',
       'trakt-api-version': '2',
-      'trakt-api-key': traktClientID,
+      'trakt-api-key': traktClientID ?? '',
     },
     method: 'GET',
   }

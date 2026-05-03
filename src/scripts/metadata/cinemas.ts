@@ -64,7 +64,7 @@ const lookupPlaceText = async (
     {
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': gmapAPIKey,
+        'X-Goog-Api-Key': gmapAPIKey ?? '',
         'X-Goog-FieldMask': textIdSKU,
         'accept-language': acceptedLanguage,
       },
@@ -86,7 +86,7 @@ const lookupPlaceDetails = async (id: string): Promise<PlaceDetails> => {
     {
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': gmapAPIKey,
+        'X-Goog-Api-Key': gmapAPIKey ?? '',
         'X-Goog-FieldMask': detailsLocationSKU,
         'accept-language': acceptedLanguage,
       },
@@ -173,7 +173,8 @@ export const contextualiseCinema = async (): Promise<Cinema[]> => {
     }
   })
 
-  return await Promise.all(returnValue)
+  const results = await Promise.all(returnValue)
+  return results.filter((c): c is Cinema => c !== null)
 }
 
 export { lookupPlace, lookupPlaceText }

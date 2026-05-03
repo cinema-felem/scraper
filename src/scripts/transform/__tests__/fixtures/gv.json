@@ -1,0 +1,66 @@
+{
+  "cinemas": [
+    {
+      "id": "1",
+      "name": "GV Tampines",
+      "sequence": "1",
+      "status": "OPEN",
+      "statusMessage": "",
+      "colorCode": "#000000",
+      "locationCode": "1",
+      "cinemaCode": "TMB",
+      "type": "T"
+    }
+  ],
+  "movies": [
+    {
+      "filmCd": "AAA001",
+      "filmTitle": "Test Movie",
+      "imageLink": "",
+      "language": "English",
+      "rating": "PG",
+      "ratingImgUrl": "",
+      "subTitles": [],
+      "reviewRating": 0,
+      "formatCode": "2D",
+      "formatGroupId": "GRP001",
+      "formatGroupParent": true,
+      "box": "",
+      "brand": "",
+      "location": "",
+      "buyTicket": true,
+      "exclusive": false,
+      "mPassMovie": false,
+      "frameDescription": "",
+      "colorCode": "",
+      "specialEvent": false,
+      "priorityBkgFlg": false,
+      "superSneaks": false,
+      "duration": 120,
+      "consumerAdvise": "",
+      "type": "M"
+    }
+  ],
+  "showtimes": [
+    {
+      "cinemaId": "1",
+      "filmCd": "AAA001",
+      "filmTitle": "Test Movie",
+      "rating": "PG",
+      "ratingImgUrl": "",
+      "consumerAdvice": "",
+      "priorityBkgFlg": false,
+      "subTitles": [],
+      "showDate": "10-05-2025",
+      "time12": "02:00PM",
+      "time24": "1400",
+      "soldPercent": 0.5,
+      "hall": "1",
+      "concessionAllow": true,
+      "increasedCapacity": {
+        "increasedCapacity": false,
+        "promptMessage": ""
+      }
+    }
+  ]
+}

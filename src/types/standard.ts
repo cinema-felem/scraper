@@ -33,7 +33,7 @@ export type StandardShowtime = {
     type: string
   }
   movieFormat: string
-  details: any
+  details: Record<string, unknown>
 }
 
 export interface MergedMovie extends Partial<StandardMovie> {

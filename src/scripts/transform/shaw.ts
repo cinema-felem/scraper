@@ -4,7 +4,11 @@ import {
   StandardShowtime,
 } from '@/types/standard'
 
-const { removeMovieDetails, cleanString } = require('../../text')
+import { toSingaporeUnixMs } from '../../utils/time'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { cleanString } = require('../../text')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { default: logger } = require('../../utils/logger')
 
 const formatType: Record<string, string> = {
   DGSD: 'Digital',
@@ -108,32 +112,13 @@ const transformMovies = (moviesArray: ShawRawMovie[]): StandardMovie[] => {
       isAdvanceSales,
     } = movie
 
-    let language = 'Unknown'
+    const language = 'Unknown'
 
-    // language = primaryTitle.indexOf('(Mand)') === -1 ? language : 'Mandarin'
-    // language = primaryTitle.indexOf('(T)') === -1 ? language : 'Thai'
-    // language = primaryTitle.indexOf('(JPN)') === -1 ? language : 'Japanese'
-    // language = primaryTitle.indexOf('(Malay)') === -1 ? language : 'Malay'
-    // language = primaryTitle.indexOf('(M)') === -1 ? language : 'Mandarin'
-    // language = primaryTitle.indexOf('(KOR)') === -1 ? language : 'Korean'
-    // language = primaryTitle.indexOf('(CHN)') === -1 ? language : 'Chinese'
-
-    // primaryTitle = removeMovieDetails(primaryTitle, (raw: string) => {
-    //   let text = structuredClone(raw)
-    //   text = text.replace('(Mand)', '')
-    //   text = text.replace('(T)', '')
-    //   text = text.replace('(JPN)', '')
-    //   text = text.replace('(Malay)', '')
-    //   text = text.replace('(M)', '')
-    //   text = text.replace('(KOR)', '')
-    //   text = text.replace('(CHN)', '')
-    //   return text
-    // })
     return {
       id: `shaw:${movieReleaseId}`,
       filmTitle: primaryTitle,
       language,
-      format: formatType[formatCode],
+      format: formatCode ? formatType[formatCode] : 'Digital',
       source: {
         chain: 'shaw',
         id: String(movieReleaseId),
@@ -148,24 +133,6 @@ const transformMovies = (moviesArray: ShawRawMovie[]): StandardMovie[] => {
     }
   })
 }
-
-// type ShawMappedMovie = {
-//   id: string
-//   filmTitle: string
-//   language: string
-//   format: string
-//   source: {
-//     chain: string
-//     id: number
-//     chainSpecific: {
-//       isLimited: boolean
-//       isNewRelease: boolean
-//       isExclusive: boolean
-//       isSneakPreview: boolean
-//       isAdvanceSales: boolean
-//     }
-//   }
-// }
 
 const transformShowtimes = (
   showtimeArray: ShawRawShowtime[],
@@ -260,14 +227,11 @@ type MappedShowtime = {
 }
 
 const getUnixTimestamp = (dateString: string, timeString: string): number => {
-  const TIMEZONE_OFFSET = '+08:00' // Singapore timezone
-
-  // Normalize time input
+  // Normalize time input (handles "HH:MM AM/PM" or "HH:MM")
   const [normalizedTime, period] = timeString.toUpperCase().split(/ (?=AM|PM)/i)
 
-  // Convert to 24-hour format
   const [hoursStr, minutes] = normalizedTime
-    .padStart(5, '0') // Ensure 4-digit format (HH:MM)
+    .padStart(5, '0')
     .split(':')
 
   let hours = parseInt(hoursStr, 10)
@@ -277,33 +241,8 @@ const getUnixTimestamp = (dateString: string, timeString: string): number => {
     hours = 0
   }
 
-  // Construct ISO date string with timezone
-  const isoString = `${dateString}T${String(hours).padStart(2, '0')}:${minutes}:00${TIMEZONE_OFFSET}`
-
-  // Validate and return timestamp
-  const date = new Date(isoString)
-  if (isNaN(date.getTime())) {
-    throw new Error('Invalid date/time input')
-  }
-
-  return date.getTime()
-}
-
-const getUnixDate = (displayDate: string, displayTime: string) => {
-  const isPM = displayTime.includes('PM')
-  if (isPM) {
-    displayTime = displayTime.replace('PM', '')
-    let hh = Number(displayTime.substring(0, 2))
-    if (hh !== 12) hh = hh + 12
-    displayTime = String(hh).padStart(2, '0') + displayTime.substring(2)
-  } else {
-    displayTime = displayTime.replace('AM', '')
-    let hh = Number(displayTime.substring(0, 2))
-    if (hh === 12) displayTime = '00' + displayTime.substring(2)
-  }
-  displayTime = displayTime.trim()
-  const jsDate = new Date(`${displayDate}T${displayTime}:00+08:00`)
-  return jsDate.getTime()
+  // dateString is already YYYY-MM-DD
+  return toSingaporeUnixMs(dateString, `${String(hours).padStart(2, '0')}:${minutes}`)
 }
 
 type ShawMappedCinema = {
@@ -353,8 +292,9 @@ const mergeMovieIds = (
   const filteredShowtimeArray = showtimeArray.flatMap(
     (showtime: StandardShowtime): StandardShowtime | [] => {
       const { filmId, details } = showtime
-      const isParent = movieSet[details.movieTitle] === filmId
-      showtime.filmId = isParent ? filmId : movieSet[details.movieTitle]
+      const movieTitle = details.movieTitle as string
+      const isParent = movieSet[movieTitle] === filmId
+      showtime.filmId = isParent ? filmId : movieSet[movieTitle]
       if (!showtime.filmId) {
         missingFilmId.add(filmId)
         return []
@@ -362,7 +302,7 @@ const mergeMovieIds = (
       return showtime
     },
   )
-  console.log(missingFilmId)
+  logger.warn('Missing film IDs', { filmIds: [...missingFilmId] })
   return filteredShowtimeArray
 }
 
@@ -388,9 +328,4 @@ const standardiseCinemaChain = (cinemaChainObject: {
   }
 }
 
-module.exports = {
-  // transformMovies,
-  // transformShowtimes,
-  // transformCinemas,
-  standardiseCinemaChain,
-}
+export { standardiseCinemaChain }
