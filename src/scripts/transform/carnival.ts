@@ -44,6 +44,7 @@ const CINEMA_NAME_TO_ID: Record<string, string> = {
   'golden mile': 'carnival:golden-mile-tower',
   'shaw tower': 'carnival:shaw-tower',
   'punggol': 'carnival:punggol',
+  'mackenzie': 'carnival:rex-mackenzie',
 }
 
 const resolveCinemaId = (cinemaName: string): string => {

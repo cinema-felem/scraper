@@ -20,6 +20,11 @@ export const fetchCinemas = async (): Promise<CarnivalCinema[]> => [
     name: 'Carnival Cinemas Punggol',
     address: 'Punggol Dormitory, Singapore',
   },
+  {
+    id: 'rex-mackenzie',
+    name: 'Rex Cinema Mackenzie Road',
+    address: '2 Mackenzie Road, Singapore 228677',
+  },
 ]
 
 export const fetchMovies = async (): Promise<CarnivalMovie[]> => {
