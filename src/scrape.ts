@@ -9,6 +9,9 @@ import * as Carnival from './scripts/scrape/carnival'
 import * as EagleWing from './scripts/scrape/eaglewing'
 import * as Filmhouse from './scripts/scrape/filmhouse'
 import * as SFS from './scripts/scrape/sfs'
+import * as Oldham from './scripts/scrape/oldham'
+import * as AllianceFrancaise from './scripts/scrape/alliancefrancaise'
+import * as Capitol from './scripts/scrape/capitol'
 
 // Increase event listener limit
 EventEmitter.defaultMaxListeners = 20
@@ -68,6 +71,9 @@ async function scrapeChain(cinemaChain: CinemaChain): Promise<void> {
       eaglewing: EagleWing,
       filmhouse: Filmhouse,
       sfs: SFS,
+      oldham: Oldham,
+      alliancefrancaise: AllianceFrancaise,
+      capitol: Capitol,
     };
 
     const { fetchMovies, fetchCinemas, fetchShowtimes } = scraperModules[cinemaChain];
