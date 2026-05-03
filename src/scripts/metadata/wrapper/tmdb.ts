@@ -511,29 +511,42 @@ const getSearchTermDistance = (
   }
 }
 
-// TODO: Check
 const sortTMDBResults = (
   movieTitle: string,
   tmdbResults: TMDBSearchResult[],
 ): TMDBSearchResult[] => {
   if (!tmdbResults) return []
+
   const calculateDistance = getSearchTermDistance(movieTitle)
-  const sortedMovies = tmdbResults.sort((a, b) => {
-    const { release_date: a_date, popularity: a_popularity } = a
-    const { release_date: b_date, popularity: b_popularity } = b
-    const b_distance = calculateDistance(b)
+
+  const now = new Date()
+  const threeMonthsAgo = new Date()
+  threeMonthsAgo.setMonth(now.getMonth() - 3)
+
+  return tmdbResults.sort((a, b) => {
+    const a_date = a.release_date ? new Date(a.release_date) : null
+    const b_date = b.release_date ? new Date(b.release_date) : null
+
+    const a_isRecent = a_date !== null && a_date >= threeMonthsAgo
+    const b_isRecent = b_date !== null && b_date >= threeMonthsAgo
+
+    // Primary: recent releases first (within last 3 months)
+    if (a_isRecent && !b_isRecent) return -1
+    if (b_isRecent && !a_isRecent) return 1
+
+    // Secondary: title similarity (lower edit distance wins)
     const a_distance = calculateDistance(a)
-    if (Math.abs(a_distance - b_distance) < 5) {
-      const a_unixTime = new Date(a_date).getTime()
-      const b_unixTime = new Date(b_date).getTime()
-      const dateDiffDays =
-        Math.abs(b_unixTime - a_unixTime) / (1000 * 60 * 60 * 24)
-      if (Math.abs(dateDiffDays) < 365) {
-        return b_popularity - a_popularity // descending
-      }
-      return b_unixTime - a_unixTime // descending
+    const b_distance = calculateDistance(b)
+    if (a_distance !== b_distance) return a_distance - b_distance
+
+    // Tertiary: popularity vs release date depending on how far apart they are
+    if (a_date && b_date) {
+      const dateDiffDays = Math.abs(b_date.getTime() - a_date.getTime()) / (1000 * 60 * 60 * 24)
+      if (dateDiffDays < 365) return b.popularity - a.popularity
+      return b_date.getTime() - a_date.getTime()
     }
-    return a_distance - b_distance
+    if (a_date) return -1
+    if (b_date) return 1
+    return b.popularity - a.popularity
   })
-  return sortedMovies
 }
