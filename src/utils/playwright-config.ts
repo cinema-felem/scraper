@@ -9,8 +9,8 @@ export interface PlaywrightSession {
 
 export const createPlaywrightSession = async (): Promise<PlaywrightSession> => {
   const browser = await chromium.launch({
-    headless: process.env.CI === 'true',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    headless: process.env.PLAYWRIGHT_HEADED !== 'true',
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--ignore-certificate-errors'],
   })
   const context = await browser.newContext()
   const page = await context.newPage()

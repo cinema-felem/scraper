@@ -16,6 +16,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
+    "postinstall": "playwright install chromium",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org puayhiang --project felem-scraper ./dist && sentry-cli sourcemaps upload --org puayhiang --project felem-scraper ./dist"
   },
   "author": "",
