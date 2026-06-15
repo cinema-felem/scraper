@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cinema Pipeline CI"
+  short_description: "Maintain scraper CI and pipeline ops"
+  default_prompt: "Use $cinema-pipeline-ci to update scraper workflows, schedules, or pipeline validation."

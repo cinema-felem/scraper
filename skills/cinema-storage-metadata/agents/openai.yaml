@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cinema Storage Metadata"
+  short_description: "Maintain storage and metadata stages"
+  default_prompt: "Use $cinema-storage-metadata to work on storage, database, or metadata enrichment in this scraper."

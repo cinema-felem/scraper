@@ -359,7 +359,7 @@ const topNTMDBVideoResults = (
 const getMovieReleaseDate = (tmdbMovie: TMDBMovie): Partial<ReleaseDate> => {
   let limitedTheatrical: Partial<ReleaseDate> = {}
   if (!tmdbMovie?.release_dates?.results?.length) return limitedTheatrical
-  let sgReleases = tmdbMovie.release_dates.results.find(
+  const sgReleases = tmdbMovie.release_dates.results.find(
     result => result.iso_3166_1 === 'SG',
   )
   if (!sgReleases) return limitedTheatrical

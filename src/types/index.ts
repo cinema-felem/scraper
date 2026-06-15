@@ -16,11 +16,10 @@ import {
   StandardMovie,
   StandardCinema,
   StandardShowtime,
-  MergedMovie,
 } from './standard'
-import { Movie, TMDBMovie, MovieSource } from './movie'
-import { Cinema, CinemaSource, CinemaMetadata } from './cinema'
-import { Showtime, ShowtimeSource } from './showtime'
+import { Movie } from './movie'
+import { Cinema } from './cinema'
+import { Showtime } from './showtime'
 
 /**
  * Type guard to check if a movie is a StandardMovie

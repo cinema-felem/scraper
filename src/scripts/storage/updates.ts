@@ -1,7 +1,7 @@
 import { PrismaClient, Updates } from '@prisma/client'
 import logger from '../../utils/logger'
 import * as Sentry from '@sentry/node'
-import { lookupMovieOnTMDB, ProcessedMovie } from '../metadata/wrapper/tmdb'
+import { ProcessedMovie } from '../metadata/wrapper/tmdb'
 import { updateMovieTMDB } from './movie'
 import { fetchAndEnrichMovie } from '../metadata/movies'
 

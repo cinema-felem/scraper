@@ -98,11 +98,8 @@ export function mergeMovieDuplicates(
   const duplicates = classifier.findDuplicates(entries)
   const result: Partial<Movie>[] = []
 
-  duplicates.forEach((group, _) => {
+  duplicates.forEach(group => {
     if (group.length === 0) return
-
-    // Merge sources from all duplicates
-    const sources = group.map(movie => movie.source)
 
     // Use the most common title variation
     const titleCounts = new Map<string, number>()

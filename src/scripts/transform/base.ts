@@ -1,5 +1,5 @@
-import { StandardCinema, StandardMovie, StandardShowtime, ChainTransformResult } from '@/types/standard'
-import logger from '@/utils/logger'
+import { StandardCinema, StandardMovie, StandardShowtime, ChainTransformResult } from '../../types/standard'
+import logger from '../../utils/logger'
 
 export abstract class BaseTransformer {
   abstract readonly chain: string

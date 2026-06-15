@@ -3,9 +3,9 @@ export const uniqByKeepFirst = (
   a: GVMovies[],
   key: (item: GVMovies) => string,
 ) => {
-  let seen = new Set()
+  const seen = new Set()
   return a.filter(item => {
-    let k = key(item)
+    const k = key(item)
     return seen.has(k) ? false : seen.add(k)
   })
 }

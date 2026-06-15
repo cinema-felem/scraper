@@ -1,7 +1,6 @@
 import { MovieRatings } from './tmdb'
 
 const traktClientID = process.env.TRAKT_CLIENT_ID
-const traktClientSecret = process.env.TRAKT_CLIENT_SECRET
 
 interface RatingDistribution {
   [key: string]: number

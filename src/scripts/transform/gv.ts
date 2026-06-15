@@ -284,7 +284,7 @@ const transformShowtimes = (
 
 const mapCinemas = (cinemasArray: GvRawCinema[]): ShawMappedCinema[] => {
   const mappedCinemas = cinemasArray.map(cinema => {
-    const { id, name, sequence, locationCode, cinemaCode, type } = cinema
+    const { id, name, sequence, cinemaCode, type } = cinema
     const cleanedCinemaName = cleanString(name)
     const isCineleisure = id === '18' && type === 'T'
     const cinemaLocationCode = findLocationCode(cinemasArray, cinema)

@@ -1,4 +1,10 @@
 node_modules
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.venv/
 # Keep environment variables out of version control
 .env
 data/

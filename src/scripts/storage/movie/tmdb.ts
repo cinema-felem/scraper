@@ -65,7 +65,8 @@ const updateMovieTMDBId = async (movie: PrismaMovie, tmdbId: number) => {
  * @returns {Promise<void>}
  */
 const upsertTMDb = async (tmdbMovie: any) => {
-  const { filmTitle, ...tmdbMovieClean } = tmdbMovie
+  const tmdbMovieClean = { ...tmdbMovie }
+  delete tmdbMovieClean.filmTitle
 
   const id = Number(tmdbMovie?.external_ids?.tmdb_id)
 

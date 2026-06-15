@@ -1,5 +1,3 @@
-import { Browser } from 'playwright'
-import { createPlaywrightSession, closePlaywrightSession } from '../../../utils/playwright-config'
 import { FilmhouseMovie, FilmhouseSession } from './types'
 
 const FILMHOUSE_SITE = 'https://filmhouse.sg'
@@ -56,6 +54,80 @@ interface RawFilmData {
   }>
 }
 
+const decodeHtml = (value: string): string =>
+  value
+    .replace(/&amp;/g, '&')
+    .replace(/&#039;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+
+const stripTags = (value: string): string =>
+  decodeHtml(value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim())
+
+const getAttr = (html: string, name: string): string =>
+  html.match(new RegExp(`${name}=["']([^"']+)["']`, 'i'))?.[1] ?? ''
+
+const splitFilmBlocks = (html: string): string[] => {
+  const marker = '<div class="jacro-event movie-tabs row"'
+  const blocks: string[] = []
+  let start = html.indexOf(marker)
+  while (start >= 0) {
+    const next = html.indexOf(marker, start + marker.length)
+    blocks.push(html.slice(start, next >= 0 ? next : html.length))
+    start = next
+  }
+  return blocks
+}
+
+export const parseFilmhouseFilms = (html: string): RawFilmData[] =>
+  splitFilmBlocks(html).map(block => {
+    const titleAnchor = block.match(/<a[^>]*class=["']liveeventtitle["'][^>]*>([\s\S]*?)<\/a>/i)
+    const title = stripTags(titleAnchor?.[1] ?? '')
+    const href = titleAnchor ? getAttr(titleAnchor[0], 'href') : ''
+    const urlMatch = href.match(/\/film\/(\d+)\/([^/"']+)/)
+    const id = urlMatch ? urlMatch[1] : ''
+    const slug = urlMatch ? urlMatch[2] : ''
+
+    const imageBlock = block.match(/<div class=["']film_img["'][\s\S]*?<\/div>/i)?.[0] ?? ''
+    const posterUrl = getAttr(imageBlock.match(/<img[^>]+>/i)?.[0] ?? '', 'src')
+
+    const runningTime = block.match(/<div class=["']running-time["'][^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? ''
+    const spans = Array.from(runningTime.matchAll(/<span[^>]*>([\s\S]*?)<\/span>/gi)).map(match => stripTags(match[1]))
+    let duration = 0
+    let rating = ''
+    let genre = ''
+    for (const span of spans) {
+      const durationMatch = span.match(/(\d+)mins/i)
+      if (durationMatch) duration = parseInt(durationMatch[1], 10)
+      else if (span.startsWith('(')) rating = span.replace(/[()]/g, '').trim()
+      else if (!/^\d{4}$/.test(span)) genre = span
+    }
+
+    const language = stripTags(block.match(/In\s+([^.<]+)/i)?.[1] ?? '')
+    const sessions: RawFilmData['sessions'] = []
+    const performanceHtml = block.match(/<ul class=["']performance-list-items["'][^>]*>([\s\S]*?)<\/ul>/i)?.[1] ?? ''
+    const tokenPattern = /<div class=["']heading["'][^>]*>([\s\S]*?)<\/div>|<li[^>]*>([\s\S]*?)<\/li>/gi
+    let currentDate = ''
+    let token: RegExpExecArray | null
+    while ((token = tokenPattern.exec(performanceHtml)) !== null) {
+      if (token[1]) {
+        currentDate = stripTags(token[1])
+        continue
+      }
+
+      const li = token[2] ?? ''
+      const anchor = li.match(/<a[^>]*class=["'][^"']*film_book_button[^"']*["'][^>]*>[\s\S]*?<\/a>/i)?.[0] ?? ''
+      if (!anchor) continue
+      const bookUrl = getAttr(anchor, 'href')
+      const sessionId = bookUrl.match(/\/booknow\/(\d+)/)?.[1] ?? ''
+      const time = stripTags(anchor.match(/<span[^>]*class=["']time["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? '')
+      const format = stripTags(li.match(/<span[^>]*class=["']tag["'][^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? '') || '2D'
+      sessions.push({ sessionId, date: currentDate, time, format, bookUrl })
+    }
+
+    return { id, slug, title, duration, rating, genre, language, posterUrl, sessions }
+  })
+
 /**
  * Navigates to Filmhouse films page and extracts all films and sessions
  * from the server-side rendered Jacro TaPoS HTML.
@@ -64,113 +136,45 @@ export const fetchFilmsAndSessions = async (): Promise<{
   movies: FilmhouseMovie[]
   sessions: FilmhouseSession[]
 }> => {
-  let browser: Browser | null = null
-  try {
-    const { browser: b, page } = await createPlaywrightSession()
-    browser = b
+  const response = await fetch(`${FILMHOUSE_SITE}/films/`)
+  if (!response.ok) throw new Error(`Filmhouse films page returned ${response.status}`)
+  const rawFilms = parseFilmhouseFilms(await response.text())
 
-    await page.goto(`${FILMHOUSE_SITE}/films/`)
-    await page.waitForTimeout(3000)
+  const movies: FilmhouseMovie[] = []
+  const sessions: FilmhouseSession[] = []
 
-    const rawFilms = await page.evaluate<RawFilmData[]>(() => {
-      var films: any[] = []
-      document.querySelectorAll('.jacro-event.movie-tabs').forEach(function(el) {
-        var filmLink = el.querySelector('a[href*="/film/"]')
-        var href = filmLink ? (filmLink as HTMLAnchorElement).href : ''
-        var urlMatch = href.match(/\/film\/(\d+)\/([^/]+)/)
-        var id = urlMatch ? urlMatch[1] : ''
-        var slug = urlMatch ? urlMatch[2] : ''
+  for (const film of rawFilms) {
+    if (!film.id) continue
 
-        var title = (el.querySelector('.liveeventtitle') || { textContent: '' }).textContent || ''
-        title = title.trim()
-
-        var spans = el.querySelectorAll('.running-time span')
-        var duration = 0, rating = '', genre = ''
-        spans.forEach(function(s) {
-          var t = s.textContent ? s.textContent.trim() : ''
-          var m = t.match(/(\d+)mins/)
-          if (m) duration = parseInt(m[1])
-          else if (t.startsWith('(')) rating = t.replace(/[()]/g, '').trim()
-          else if (!/^\d{4}$/.test(t)) genre = t
-        })
-
-        var posterImg = el.querySelector('.film_img img')
-        var posterUrl = posterImg ? ((posterImg as HTMLImageElement).src || '') : ''
-
-        var language = ''
-        el.querySelectorAll('em strong, strong em, em').forEach(function(e) {
-          if (!language && e.textContent && e.textContent.includes('In ')) {
-            language = e.textContent.replace('In ', '').trim()
-          }
-        })
-
-        var sessions: any[] = []
-        var list = el.querySelector('ul.performance-list-items')
-        if (list) {
-          var currentDate = ''
-          list.childNodes.forEach(function(node) {
-            if (node.nodeType !== 1) return
-            var el = node as Element
-            if (el.classList && el.classList.contains('heading')) {
-              currentDate = el.textContent ? el.textContent.trim() : ''
-            } else if (el.tagName === 'LI') {
-              var a = el.querySelector('a.film_book_button')
-              if (!a) return
-              var bookUrl = (a as HTMLAnchorElement).href || ''
-              var sessionIdMatch = bookUrl.match(/\/booknow\/(\d+)/)
-              var sessionId = sessionIdMatch ? sessionIdMatch[1] : ''
-              var timeSpan = a.querySelector('span.time')
-              var time = timeSpan && timeSpan.textContent ? timeSpan.textContent.trim() : ''
-              var tagEl = el.querySelector('.movietag span.tag')
-              var format = tagEl && tagEl.textContent ? tagEl.textContent.trim() : '2D'
-              sessions.push({ sessionId: sessionId, date: currentDate, time: time, format: format, bookUrl: bookUrl })
-            }
-          })
-        }
-
-        films.push({ id: id, slug: slug, title: title, duration: duration, rating: rating, genre: genre, language: language, posterUrl: posterUrl, sessions: sessions })
-      })
-      return films
+    movies.push({
+      id: film.id,
+      title: film.title || film.slug.replace(/-/g, ' '),
+      rating: film.rating,
+      language: film.language,
+      genre: film.genre,
+      duration: film.duration,
+      synopsis: '',
+      posterUrl: film.posterUrl,
+      trailerUrl: '',
+      openingDate: '',
     })
 
-    const movies: FilmhouseMovie[] = []
-    const sessions: FilmhouseSession[] = []
+    for (const s of film.sessions) {
+      if (!s.sessionId || !s.date || !s.time) continue
+      const startTime = parseDateTime(s.date, s.time)
+      if (!startTime) continue
 
-    for (const film of rawFilms) {
-      if (!film.id) continue
-
-      movies.push({
-        id: film.id,
-        title: film.title || film.slug.replace(/-/g, ' '),
-        rating: film.rating,
-        language: film.language,
-        genre: film.genre,
-        duration: film.duration,
-        synopsis: '',
-        posterUrl: film.posterUrl,
-        trailerUrl: '',
-        openingDate: '',
+      sessions.push({
+        id: s.sessionId,
+        filmId: film.id,
+        screenId: '',
+        screenName: '',
+        startTime,
+        attributes: s.format && s.format !== '2D' ? [s.format] : [],
+        bookingUrl: s.bookUrl || `${FILMHOUSE_SITE}/films/`,
       })
-
-      for (const s of film.sessions) {
-        if (!s.sessionId || !s.date || !s.time) continue
-        const startTime = parseDateTime(s.date, s.time)
-        if (!startTime) continue
-
-        sessions.push({
-          id: s.sessionId,
-          filmId: film.id,
-          screenId: '',
-          screenName: '',
-          startTime,
-          attributes: s.format && s.format !== '2D' ? [s.format] : [],
-          bookingUrl: s.bookUrl || `${FILMHOUSE_SITE}/films/`,
-        })
-      }
     }
-
-    return { movies, sessions }
-  } finally {
-    if (browser) await closePlaywrightSession(browser)
   }
+
+  return { movies, sessions }
 }

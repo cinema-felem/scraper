@@ -5,14 +5,22 @@
   "main": "scrape.js",
   "scripts": {
     "dev": "tsc --watch",
+    "python:install": "python3 -m pip install -e .",
+    "python:install:dev": "python3 -m pip install -e '.[dev]'",
     "build": "tsc && tsc-alias && npm run sentry:sourcemaps",
     "lint": "eslint src/",
     "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
-    "scrape": "tsc && tsc-alias && node dist/scrape.js",
-    "transform": "tsc && tsc-alias && node dist/transform.js",
-    "storage": "tsc && tsc-alias && node dist/storage.js",
+    "scrape": "python3 -m pyetl scrape",
+    "transform": "python3 -m pyetl transform",
+    "storage": "python3 -m pyetl storage",
+    "storage:dry-run": "python3 -m pyetl storage --dry-run",
+    "scrape:ts": "tsc && tsc-alias && node dist/scrape.js",
+    "transform:ts": "tsc && tsc-alias && node dist/transform.js",
+    "storage:ts": "tsc && tsc-alias && node dist/storage.js",
     "metadata": "tsc && tsc-alias && node dist/metadata.js",
-    "test": "mocha --require ts-node/register 'src/**/*.test.ts'",
+    "test": "npm run test:ts && npm run test:python",
+    "test:ts": "mocha --require ts-node/register 'src/**/*.test.ts'",
+    "test:python": "python3 -m unittest discover -s tests -p 'test_*.py'",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
@@ -43,5 +51,9 @@
     "tsc-alias": "^1.8.16",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.4.0"
+  },
+  "overrides": {
+    "brace-expansion": "1.1.15",
+    "serialize-javascript": "7.0.5"
   }
 }

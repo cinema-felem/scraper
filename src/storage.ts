@@ -1,13 +1,12 @@
-import { promises as fs, mkdirSync, readFileSync } from 'fs'
+import { mkdirSync, readFileSync } from 'fs'
 import { EventEmitter } from 'events'
 import * as path from 'path'
 import { insertCinemas } from './scripts/storage/cinema'
 import { insertMovies } from './scripts/storage/movie'
 import { insertShowtimes } from './scripts/storage/showtime'
 import { removeOrphanedMovies, executeUpdates } from './scripts/storage/updates'
-import logger, { initSentry, DataCountMetrics } from './utils/logger'
+import logger, { initSentry } from './utils/logger'
 import * as Sentry from '@sentry/node'
-import { PrismaClient } from '@prisma/client'
 import {
   StandardCinema,
   StandardMovie,
@@ -35,15 +34,6 @@ interface UpdateOperationResult {
   cinemaUpdates?: number
   showtimeUpdates?: number
   details?: Record<string, any>
-}
-
-/**
- * Interface for database counts
- */
-interface DatabaseCounts {
-  movies: number
-  cinemas: number
-  showtimes: number
 }
 
 // Increase event listener limit

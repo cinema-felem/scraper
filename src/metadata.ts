@@ -4,7 +4,7 @@ import * as path from 'path'
 import * as Sentry from '@sentry/node'
 import { lookupMovies } from './scripts/metadata/movies'
 import { contextualiseCinema } from './scripts/metadata/cinemas'
-import logger, { initSentry, DataCountMetrics } from './utils/logger'
+import logger, { initSentry } from './utils/logger'
 
 /**
  * Metadata processing script for cinema data

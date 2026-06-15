@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cinema Scraper Chain"
+  short_description: "Add or fix cinema chain scrapers"
+  default_prompt: "Use $cinema-scraper-chain to add or fix a cinema scraper in this repository."

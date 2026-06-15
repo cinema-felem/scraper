@@ -292,7 +292,7 @@ class Logger {
     // Only send to Sentry if it's initialized
     if (process.env.SENTRY_DSN) {
       try {
-        let context: Record<string, any> = {};
+        const context: Record<string, any> = {};
 
         // Process arguments to make them serializable
         if (args.length > 0) {
@@ -375,7 +375,7 @@ export function initSentry(options: Record<string, any> = {}): void {
     try {
       // In production, this would typically be set by the build process
       release = process.env.SENTRY_RELEASE || 'cinema-scraper@1.0.0';
-    } catch (e) {
+    } catch {
       release = 'cinema-scraper@unknown';
     }
 

@@ -1,7 +1,7 @@
 import { promises as fs, mkdirSync } from 'fs'
 import * as path from 'path'
 import { EventEmitter } from 'events'
-import logger, { initSentry, DataCountMetrics } from './utils/logger'
+import logger, { initSentry } from './utils/logger'
 import { CINEMA_CHAINS, CinemaChain } from './types/chains'
 import * as GV from './scripts/scrape/gv'
 import * as Shaw from './scripts/scrape/shaw'
@@ -9,9 +9,6 @@ import * as Carnival from './scripts/scrape/carnival'
 import * as EagleWing from './scripts/scrape/eaglewing'
 import * as Filmhouse from './scripts/scrape/filmhouse'
 import * as SFS from './scripts/scrape/sfs'
-import * as Oldham from './scripts/scrape/oldham'
-import * as AllianceFrancaise from './scripts/scrape/alliancefrancaise'
-import * as Capitol from './scripts/scrape/capitol'
 
 // Increase event listener limit
 EventEmitter.defaultMaxListeners = 20
@@ -71,9 +68,6 @@ async function scrapeChain(cinemaChain: CinemaChain): Promise<void> {
       eaglewing: EagleWing,
       filmhouse: Filmhouse,
       sfs: SFS,
-      oldham: Oldham,
-      alliancefrancaise: AllianceFrancaise,
-      capitol: Capitol,
     };
 
     const { fetchMovies, fetchCinemas, fetchShowtimes } = scraperModules[cinemaChain];
@@ -199,7 +193,7 @@ function getShowtimeDateRange(showtimes: any[]): { earliest: string; latest: str
       earliest: earliest.toISOString().split('T')[0],
       latest: latest.toISOString().split('T')[0]
     };
-  } catch (e) {
+  } catch {
     return { earliest: 'error', latest: 'error' };
   }
 }

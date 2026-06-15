@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cinema Transform Normalizer"
+  short_description: "Normalize raw cinema data safely"
+  default_prompt: "Use $cinema-transform-normalizer to update transform normalization for scraper output."

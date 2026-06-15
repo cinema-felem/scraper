@@ -99,7 +99,7 @@ interface ShawRawShowtime {
 
 const transformMovies = (moviesArray: ShawRawMovie[]): StandardMovie[] => {
   return moviesArray.map(movie => {
-    let {
+    const {
       movieReleaseId,
       primaryTitle,
       formatCode,
@@ -137,7 +137,7 @@ const transformShowtimes = (
 ): StandardShowtime[] => {
   const finalShowtimesArray: StandardShowtime[] = []
   showtimeArray.map(movieShowtime => {
-    let {
+    const {
       // movieId,
       movieReleaseId,
       primaryTitle,
@@ -154,12 +154,12 @@ const transformShowtimes = (
       locationVenueName,
       seatingStatus,
       isMidnight,
-      locationVenueBrandCode,
       formatCode,
       subtitleCode,
       // brandCode,
       isDtsx,
     } = movieShowtime
+    let locationVenueBrandCode = movieShowtime.locationVenueBrandCode
 
     const unixTime = toSingaporeUnixMsFrom12h(displayDate, displayTime)
 
@@ -201,9 +201,9 @@ const transformShowtimes = (
 
 const transformCinemas = (cinemasArray: ShawRawCinema[]): StandardCinema[] => {
   return cinemasArray.map(cinema => {
-    let { id, name, address, code } = cinema
-    name = cleanString(name)
-    address = cleanString(address)
+    const { id, code } = cinema
+    const name = cleanString(cinema.name)
+    const address = cleanString(cinema.address)
     return {
       id: `shaw:${id}`,
       name,
@@ -257,7 +257,7 @@ const standardiseCinemaChain = (cinemaChainObject: {
   cinemas: StandardCinema[]
   showtimes: StandardShowtime[]
 } => {
-  let { movies, cinemas, showtimes } = cinemaChainObject
+  const { movies, cinemas, showtimes } = cinemaChainObject
 
   const mappedCinema = transformCinemas(cinemas)
   const mappedMovies = transformMovies(movies)

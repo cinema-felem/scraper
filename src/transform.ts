@@ -8,7 +8,7 @@ import {
 } from './types/standard'
 import { CINEMA_CHAINS } from './types/chains'
 import * as path from 'path'
-import logger, { initSentry, DataCountMetrics } from './utils/logger'
+import logger, { initSentry } from './utils/logger'
 
 // Increase event listener limit
 EventEmitter.defaultMaxListeners = 20
@@ -85,7 +85,7 @@ async function processAllCinemaChains(): Promise<void> {
         });
         let standardiseCinemaChain;
         try {
-          const mod = require(path.join('../dist/scripts/transform/', cinemaChain)) as ChainTransformer;
+          const mod = await import(path.join('../dist/scripts/transform/', cinemaChain)) as ChainTransformer;
           standardiseCinemaChain = mod.standardiseCinemaChain;
           logger.addBreadcrumb('module_load', `Loaded transform module for ${cinemaChain}`);
         } catch (err) {

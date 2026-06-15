@@ -3,7 +3,6 @@ import { queryCinema, updateMetadata, lookupCinemas } from '../storage/cinema'
 import { Cinema } from '@prisma/client'
 import {
   CinemaLocation,
-  CinemaMetadata as CinemaMetadataType,
 } from '../../types/cinema'
 
 const gmapAPIKey = process.env.GMAP_API_KEY

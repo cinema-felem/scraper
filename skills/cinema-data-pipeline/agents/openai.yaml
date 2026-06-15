@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cinema Data Pipeline"
+  short_description: "Run and debug scraper data pipeline"
+  default_prompt: "Use $cinema-data-pipeline to run, debug, or update the scraper data pipeline."

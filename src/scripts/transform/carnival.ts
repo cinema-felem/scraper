@@ -1,8 +1,8 @@
-import { StandardShowtime } from '@/types/standard'
-import { toSingaporeUnixMsFrom12h } from '@/utils/time'
+import { StandardShowtime } from '../../types/standard'
+import { toSingaporeUnixMsFrom12h } from '../../utils/time'
 import { makeTransformCinemas, makeTransformMovies } from './factory'
 import { BaseTransformer } from './base'
-import logger from '@/utils/logger'
+import logger from '../../utils/logger'
 
 interface RawCarnivalCinema {
   id: string
@@ -55,6 +55,11 @@ const resolveCinemaId = (cinemaName: string): string => {
   return 'carnival:golden-mile-tower'
 }
 
+const normalizeShowTime = (showTime: string): string => {
+  const match = showTime.trim().match(/^(\d{1,2}:\d{2})\s*([AP]M)/i)
+  return match ? `${match[1]} ${match[2].toUpperCase()}` : showTime
+}
+
 class CarnivalTransformer extends BaseTransformer {
   readonly chain = 'carnival'
 
@@ -85,16 +90,19 @@ class CarnivalTransformer extends BaseTransformer {
         const cinemaId = resolveCinemaId(cinemaName)
         return sessions
           .filter(s => s.showTime)
-          .map(s => ({
-            id: `carnival:${s.showId}`,
-            filmId: `carnival:${movieCode}`,
-            cinemaId,
-            unixTime: toSingaporeUnixMsFrom12h(date, s.showTime),
-            link: s.bookingLink || 'https://carnivalcinemas.sg/',
-            ticketType: { label: s.format || '2D', type: s.format || '2D' },
-            movieFormat: s.format || '2D',
-            details: { screen: s.screen, showTime: s.showTime, date },
-          }))
+          .map(s => {
+            const normalizedShowTime = normalizeShowTime(s.showTime)
+            return {
+              id: `carnival:${s.showId}`,
+              filmId: `carnival:${movieCode}`,
+              cinemaId,
+              unixTime: toSingaporeUnixMsFrom12h(date, normalizedShowTime),
+              link: s.bookingLink || 'https://carnivalcinemas.sg/',
+              ticketType: { label: s.format || '2D', type: s.format || '2D' },
+              movieFormat: s.format || '2D',
+              details: { screen: s.screen, showTime: s.showTime, normalizedShowTime, date },
+            }
+          })
       }),
     )
   }

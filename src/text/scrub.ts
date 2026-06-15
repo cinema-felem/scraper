@@ -16,7 +16,7 @@ export const removeExcessCharacters = (raw: string): string => {
 
 export const removeNonASCIICharacters = (raw: string): string => {
   let text = structuredClone(raw)
-  text = text.replaceAll(/[^\x00-\x7F]/g, '')
+  text = Array.from(text).filter(char => char.charCodeAt(0) <= 0x7f).join('')
   return text
 }
 

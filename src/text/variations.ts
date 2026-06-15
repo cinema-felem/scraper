@@ -3,7 +3,6 @@ import { MergedMovie, StandardMovie } from '@/types/standard'
 import { getEditDistance } from './compare'
 import { removeMovieDetails } from './title'
 import { asciify } from './scrub'
-import { Movie } from '@prisma/client'
 
 // export function getClosestMatch(
 //   variations: string[],

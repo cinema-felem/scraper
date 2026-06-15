@@ -2,21 +2,27 @@
 
 [https://deepwiki.com/cinema-felem/scraper/](https://deepwiki.com/cinema-felem/scraper/)
 
-1. Scrape (scrape.js)
+Install Python runtime dependencies before running live DB storage:
+
+```sh
+npm run python:install
+```
+
+1. Scrape (`python3 -m pyetl scrape` / `npm run scrape`)
    Scrape from websites
    Store on data/raw
 
-2. Transform (transform.js)
+2. Transform (`python3 -m pyetl transform` / `npm run transform`)
    Reads data/raw and transforms it to standardised format on data/intermediate
-   Generates data/permutations for debugging
-   Store on data/intermediate, data/permutations
+   Store on data/intermediate
 
-3. Storage (storage.js)
+3. Storage (`python3 -m pyetl storage` / `npm run storage`)
    Reads from data/intermediate, Store to DB
-   Does minor pattern matching to reconcile differing cinema namings
-   Lookup from 'updates' to keep existing data in sync
+   Requires `DATABASE_URL`
+   Use `npm run storage:dry-run` to validate the merge file without DB access
 
 4. Metadata (metadata.js)
+   Still TypeScript.
    Reads from data/intermediate, Store to DB
    Get metadata from TMDB/Google Maps
    Get rating from OMDB, Trakt and Letterboxd

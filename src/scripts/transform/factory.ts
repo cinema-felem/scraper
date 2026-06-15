@@ -1,4 +1,4 @@
-import { StandardCinema, StandardMovie } from '@/types/standard'
+import { StandardCinema, StandardMovie } from '../../types/standard'
 import { cleanString } from '../../text'
 
 export interface CinemaFieldMapping<T> {
